@@ -36,8 +36,7 @@ const Login: React.FC = () => {
               <Database className="w-7 h-7 text-white" />
             </div>
           </div>
-          <CardTitle className="text-xl">RalphLoop MDM</CardTitle>
-          <p className="text-sm text-gray-500">物料主数据治理平台</p>
+          <CardTitle className="text-xl">制造业数据治理平台</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
