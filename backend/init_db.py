@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Initialize database with seed data for testing."""
 import sys
-sys.path.insert(0, "/mnt/agents/output/app/backend")
+import os
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from sqlalchemy.orm import Session
 from app.core.database import SessionLocal, engine
