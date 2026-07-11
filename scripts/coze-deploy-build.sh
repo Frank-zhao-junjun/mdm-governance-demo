@@ -11,7 +11,7 @@ pnpm install
 pnpm build
 
 # --- 后端：安装 Python 依赖 ---
-uv pip install --system -r backend/requirements.txt
+uv pip install --system --break-system-packages --offline -r backend/requirements.txt
 
 # --- 初始化数据库 (SQLite) ---
 cd backend

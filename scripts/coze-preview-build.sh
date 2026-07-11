@@ -11,7 +11,7 @@ pnpm install
 
 # --- 后端 Python 依赖 ---
 # 使用 uv 管理依赖安装（系统级），避免 venv 创建超时
-uv pip install --system -r backend/requirements.txt
+uv pip install --system --break-system-packages --offline -r backend/requirements.txt
 
 # --- 初始化数据库 (SQLite) ---
 cd backend

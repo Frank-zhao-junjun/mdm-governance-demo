@@ -99,7 +99,7 @@ pnpm build        # 构建到 dist/
 ### 后端
 ```bash
 cd backend
-uv pip install --system -r requirements.txt    # 安装依赖
+uv pip install --system --break-system-packages --offline -r requirements.txt    # 沙箱/预览环境：系统 Python 已预装依赖，--offline 避免下载超时
 python3 init_db.py                               # 初始化数据库 (SQLite)
 python3 -m uvicorn app.main:app --reload --port 8000
 ```
@@ -137,3 +137,6 @@ python3 -m uvicorn app.main:app --reload --port 8000
 - OpenMetadata 和 BTP 集成默认关闭 (`.env.example` 中 `OM_ENABLED=false`)
 - 预览环境使用系统 Python 而非 venv（uv venv + pip install 在沙箱中下载超时），生产环境应使用 venv
 - 后端 config.py 中 `OM_ENABLED` 和 `BTP_ENABLED` 默认为 `true`，预览/部署脚本中显式设为 `false`
+- `.coze` 采用双文件体系，但本项目技术项目根目录与工作区根目录重合（`[subprojects].path = ["."]`），因此 `/workspace/projects/.coze` 同时承担根 `.coze` 与子项目 `.coze` 职责，`sub_id` 与 `name` 均位于该文件
+- 预览/部署脚本中 `uv pip install` 必须带 `--break-system-packages`（绕过 PEP 668 的系统 Python 保护）和 `--offline`（沙箱网络下载极慢，依赖已由镜像预装）；如迁移到独立 venv 可去除这两个标志
+- 标准初始化流程已验证：`[dev]` 预览链路（Vite 5000 + FastAPI 8000）可正常启动，`curl localhost:5000` 返回 200 且监听 `0.0.0.0:5000`
