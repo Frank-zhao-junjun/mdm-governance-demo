@@ -99,7 +99,7 @@ const NewApplication: React.FC = () => {
     setLoading(true);
     try {
       const payload = { ...formData, classification_id: selectedClass };
-      const data = await api<Application>('/api/applications/', { method: 'POST', body: payload });
+      const data = await api<Application>('/api/applications/', { method: 'POST', body: JSON.stringify(payload) });
       setAppId(data.id);
       setAttachments(data.attachments || []);
       await uploadFiles(data.id, pendingFiles);

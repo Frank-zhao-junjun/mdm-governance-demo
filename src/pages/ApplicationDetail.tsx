@@ -28,7 +28,7 @@ const ApplicationDetail: React.FC = () => {
 
   const handleAction = async (endpoint: string, successMsg: string) => {
     try {
-      const data = await api<{ success: boolean; message: string }>(endpoint, { method: 'POST', body: { approved: true, comment: successMsg } });
+      const data = await api<{ success: boolean; message: string }>(endpoint, { method: 'POST', body: JSON.stringify({ approved: true, comment: successMsg }) });
       toast.success(data.message);
       window.location.reload();
     } catch {

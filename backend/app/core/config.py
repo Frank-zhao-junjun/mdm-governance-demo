@@ -8,17 +8,17 @@ class Settings:
     PROJECT_NAME: str = "RalphLoop MDM Governance"
     VERSION: str = "1.0.0"
     
-    # Database
-    DATABASE_URL: str = os.getenv("SQLALCHEMY_DATABASE_URL", "postgresql://mdg_user:mdg_password@localhost:5432/mdm_governance")
+    # Database — SQLite for dev, override with PostgreSQL in production
+    DATABASE_URL: str = os.getenv("SQLALCHEMY_DATABASE_URL", "sqlite:///./mdm_governance.db")
     
-    # OpenMetadata
+    # OpenMetadata — disabled by default for dev
     OM_HOST: str = os.getenv("OPENMETADATA_HOST", "http://localhost:8585/api")
     OM_TOKEN: str = os.getenv("OPENMETADATA_TOKEN", "")
-    OM_ENABLED: bool = os.getenv("OM_ENABLED", "true").lower() == "true"
+    OM_ENABLED: bool = os.getenv("OM_ENABLED", "false").lower() == "true"
     
-    # BTP Mock
+    # BTP Mock — disabled by default for dev
     BTP_MOCK_URL: str = os.getenv("BTP_MOCK_URL", "http://localhost:8888")
-    BTP_ENABLED: bool = os.getenv("BTP_ENABLED", "true").lower() == "true"
+    BTP_ENABLED: bool = os.getenv("BTP_ENABLED", "false").lower() == "true"
     
     # Environment
     ENV: str = os.getenv("ENV", "development")
