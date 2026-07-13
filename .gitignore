@@ -76,3 +76,7 @@ htmlcov/
 
 # TypeScript
 *.tsbuildinfo
+
+# Frontend utilities (override Python `lib/` ignore)
+!src/lib/
+!src/lib/**
