@@ -1,4 +1,4 @@
-﻿# RalphLoop MDM Governance — 制造业物料主数据治理平台
+# RalphLoop MDM Governance — 制造业物料主数据治理平台
 
 > **物料主数据全生命周期管理平台**：从申请、校验、去重、编码、审批到发布的端到端治理闭环。
 > **技术栈**: React 19 + FastAPI + SQLite/PostgreSQL | **版本**: v1.0.0

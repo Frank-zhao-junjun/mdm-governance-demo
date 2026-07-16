@@ -80,3 +80,6 @@ htmlcov/
 # Frontend utilities (override Python `lib/` ignore)
 !src/lib/
 !src/lib/**
+
+# Large archive files
+*.tar.gz

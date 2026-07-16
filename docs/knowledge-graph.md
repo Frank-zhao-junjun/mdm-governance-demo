@@ -1,4 +1,4 @@
-﻿# 制造业物料主数据治理平台 · 代码资产知识图谱
+# 制造业物料主数据治理平台 · 代码资产知识图谱
 
 > **版本**: v1.0.0 | **更新**: 2026-07-13 | **技术栈**: React 19 + FastAPI + SQLite/PostgreSQL
 > **范围**: 全仓库（HEAD 当前快照），React/FastAPI 架构
@@ -269,7 +269,7 @@ draft → submit → pending_admin/pending_dept → approved → published
                               rejected（可驳回）
 `
 
-提交后由系统自动决定流转至 pending_admin 或 pending_dept，审批通过后进入 pproved，发布后变为 published。任何审批环节可驳回至 ejected。
+提交后由系统自动决定流转至 pending_admin 或 pending_dept，审批通过后进入 pproved，发布后变为 published。任何审批环节可驳回至 ejected。
 
 ### 6.3 提交事务（原子操作）
 
