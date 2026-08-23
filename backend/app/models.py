@@ -182,7 +182,7 @@ class CodeRule(Base):
 
 
 class GoldenRecord(Base):
-    """物料主数据 Golden Record"""
+    """物料主数据 金标数据"""
     __tablename__ = "golden_records"
     
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
@@ -230,7 +230,7 @@ class GoldenRecord(Base):
 
 
 class GoldenRecordVersion(Base):
-    """Immutable snapshot for every Golden Record lifecycle change."""
+    """Immutable snapshot for every 金标数据 lifecycle change."""
     __tablename__ = "golden_record_versions"
     __table_args__ = (
         UniqueConstraint("golden_record_id", "version_number", name="uq_gr_version_number"),

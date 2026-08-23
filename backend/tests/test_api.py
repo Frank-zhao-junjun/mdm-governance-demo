@@ -435,7 +435,7 @@ class TestAuditEndpoints:
 
 
 class TestGoldenRecordEndpoints:
-    """Test Golden Record endpoints."""
+    """Test 金标数据 endpoints."""
 
     def test_list_golden_records(self, client):
         """TC-API-060: List golden records."""

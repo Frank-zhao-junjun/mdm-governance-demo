@@ -30,7 +30,7 @@ const GoldenRecords: React.FC = () => {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           <Input placeholder="搜索物料编码或名称..." className="pl-10 w-80" value={filter} onChange={(e) => setFilter(e.target.value)} />
         </div>
-        <Badge className="bg-green-100 text-green-700">共 {filtered.length} 条 Golden Record</Badge>
+        <Badge className="bg-green-100 text-green-700">共 {filtered.length} 条金标数据</Badge>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -54,7 +54,7 @@ const GoldenRecords: React.FC = () => {
             </CardContent>
           </Card>
         ))}
-        {filtered.length === 0 && <p className="text-center text-gray-400 col-span-3 py-8">暂无 Golden Record</p>}
+        {filtered.length === 0 && <p className="text-center text-gray-400 col-span-3 py-8">暂无金标数据</p>}
       </div>
     </div>
   );

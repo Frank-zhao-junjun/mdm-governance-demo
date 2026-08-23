@@ -161,7 +161,7 @@ def increment_seq(db: Session, rule_id: str) -> int:
     return row[0] if row else 0
 
 
-# ========== Golden Record ==========
+# ========== 金标数据 ==========
 
 def create_golden_record(db: Session, data: schemas.GoldenRecordBase, application_id: str, user_id: str) -> models.GoldenRecord:
     db_item = models.GoldenRecord(

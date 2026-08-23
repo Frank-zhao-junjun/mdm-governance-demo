@@ -174,7 +174,7 @@ class CodeRuleResponse(CodeRuleBase):
     model_config = ConfigDict(from_attributes=True)
 
 
-# ========== Golden Record ==========
+# ========== 金标数据 ==========
 
 class GoldenRecordBase(BaseModel):
     material_code: str

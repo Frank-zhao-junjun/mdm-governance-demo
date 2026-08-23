@@ -17,7 +17,7 @@ class AuditService:
         "code_generate": "编码生成",
         "admin_approve": "管理员审批",
         "dept_approve": "使用部门审批",
-        "create_gr": "创建Golden Record",
+        "create_gr": "创建金标数据",
         "publish_btp": "BTP发布",
         "sync_om": "OpenMetadata同步",
         "om_test": "质量测试",

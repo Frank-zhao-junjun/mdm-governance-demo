@@ -488,7 +488,7 @@ def publish_application(
     user: dict = Depends(require_admin),
     db: Session = Depends(get_db)
 ):
-    """Publish approved application to Golden Record, BTP, and OpenMetadata."""
+    """Publish approved application to 金标数据, BTP, and OpenMetadata."""
     app = crud.get_application(db, app_id)
     if not app:
         raise HTTPException(status_code=404, detail="申请单不存在")
@@ -512,7 +512,7 @@ def publish_application(
     audit = AuditService(db)
     
     try:
-        # Step 1: Create Golden Record
+        # Step 1: Create 金标数据
         gr_data = schemas.GoldenRecordBase(
             material_code=app.material_code,
             material_name=app.material_name,
@@ -624,7 +624,7 @@ def publish_application(
         if not btp_result["success"] or not om_result["success"]:
             return {
                 "success": False,
-                "message": "Golden Record 已创建，但外部同步未完成，请执行补偿重试",
+                "message": "金标数据 已创建，但外部同步未完成，请执行补偿重试",
                 "status": models.ApplicationStatus.PUBLISHING.value,
                 "golden_record_id": gr.id,
                 "btp": btp_result,

@@ -201,7 +201,7 @@ class TestIncrementSeqAtomicity:
 
 
 class TestGoldenRecordCRUD:
-    """Test Golden Record CRUD operations."""
+    """Test 金标数据 CRUD operations."""
 
     def test_create_golden_record(self, seeded_db):
         """TC-CRUD-020: Create golden record."""

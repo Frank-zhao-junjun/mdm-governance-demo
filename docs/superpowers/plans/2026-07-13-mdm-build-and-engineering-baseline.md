@@ -274,7 +274,7 @@ git commit -m "fix: default OM/BTP to false and SQLite as default dev database"
 ```markdown
 # RalphLoop MDM Governance — 物料主数据治理平台
 
-制造业物料主数据治理平台，覆盖物料申请、审批、Golden Record 生成、分类管理、元数据治理与审计追踪。
+制造业物料主数据治理平台，覆盖物料申请、审批、金标数据 生成、分类管理、元数据治理与审计追踪。
 
 ## 技术栈
 

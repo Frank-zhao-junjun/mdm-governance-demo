@@ -177,7 +177,7 @@ const ApplicationDetail: React.FC = () => {
           </>
         )}
         {app.status === 'approved' && (
-          <Button className="bg-blue-600 hover:bg-blue-700" onClick={handlePublish}><RefreshCw className="w-4 h-4 mr-2" />发布到 Golden Record</Button>
+          <Button className="bg-blue-600 hover:bg-blue-700" onClick={handlePublish}><RefreshCw className="w-4 h-4 mr-2" />发布到金标数据</Button>
         )}
       </div>
     </div>

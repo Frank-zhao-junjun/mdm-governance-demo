@@ -26,7 +26,7 @@ const Dashboard: React.FC = () => {
 
   const statCards = [
     { label: '总申请单', value: stats?.stats?.total_applications || 0, icon: FileText, color: 'bg-blue-500' },
-    { label: 'Golden Record', value: stats?.stats?.total_golden_records || 0, icon: Database, color: 'bg-green-500' },
+    { label: '金标数据', value: stats?.stats?.total_golden_records || 0, icon: Database, color: 'bg-green-500' },
     { label: '分类数', value: stats?.stats?.total_classifications || 0, icon: FolderTree, color: 'bg-purple-500' },
     { label: '待审批', value: (stats?.stats?.pending_admin || 0) + (stats?.stats?.pending_dept || 0), icon: Clock, color: 'bg-orange-500' },
   ];

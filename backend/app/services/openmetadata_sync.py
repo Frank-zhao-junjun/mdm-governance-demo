@@ -10,7 +10,7 @@ from app.core.config import settings
 
 
 class OpenMetadataSync:
-    """Sync Golden Records to OpenMetadata."""
+    """Sync 金标数据s to OpenMetadata."""
     
     def __init__(self, enabled: Optional[bool] = None):
         self.enabled = settings.OM_ENABLED if enabled is None else enabled

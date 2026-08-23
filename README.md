@@ -96,7 +96,7 @@ uvicorn app.main:app --reload --port 8000      # 启动 API → http://localhost
 | 模块 | 职责 |
 |------|------|
 | 物料申请 (Applications) | 申请创建、编辑、提交、审批、发布 |
-| 金标数据 (Golden Records) | 权威主数据卡片、版本、BTP/OM 状态 |
+| 金标数据 (金标数据s) | 权威主数据卡片、版本、BTP/OM 状态 |
 | 分类管理 (Classifications) | 三级物料分类树 + 属性模板 |
 | 元数据治理 (Metadata Governance) | 元数据目录、血缘、质量测试、审计轨迹 |
 | 审计追踪 (Audit Trace) | 全生命周期操作日志与时间线 |
@@ -110,7 +110,7 @@ uvicorn app.main:app --reload --port 8000      # 启动 API → http://localhost
                                               ↓
               管理员审批 ← 部门审批 ← 待审批 ←┘
                  ↓
-              已批准 → 发布 → 创建 Golden Record → BTP 发布 + OpenMetadata 同步
+              已批准 → 发布 → 创建 金标数据 → BTP 发布 + OpenMetadata 同步
 ```
 
 ### 提交自动执行链
@@ -121,11 +121,11 @@ uvicorn app.main:app --reload --port 8000      # 启动 API → http://localhost
 
 ### 发布流程
 
-1. **创建 Golden Record** — 成为权威主数据
+1. **创建 金标数据** — 成为权威主数据
 2. **BTP 发布** — Mock SAP BTP 发布
 3. **OpenMetadata 同步** — 元数据目录 + 质量测试
 
-### Golden Record 生命周期
+### 金标数据 生命周期
 
 每次初始发布、修订、失效和回滚都会在 `golden_record_versions` 保存不可变快照，并记录父版本、变更原因、操作人和时间。
 

@@ -22,7 +22,7 @@ const Layout: React.FC = () => {
   const navItems = [
     { path: '/dashboard', label: '仪表盘', icon: LayoutDashboard },
     { path: '/applications', label: '物料申请', icon: FileText },
-    { path: '/golden-records', label: 'Golden Record', icon: Database },
+    { path: '/golden-records', label: '金标数据', icon: Database },
     { path: '/metadata-governance', label: '元数据治理', icon: Network },
     { path: '/classifications', label: '分类管理', icon: FolderTree },
   ];

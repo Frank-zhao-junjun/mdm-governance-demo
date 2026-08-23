@@ -47,7 +47,7 @@ D:\AI\数据治理\
 | 文件 | 行数 | 职责 |
 |------|------|------|
 | src/main.tsx | 9 | React 入口，挂载 <App /> 到 #root |
-| src/App.tsx | 35 | **路由定义**：登录、仪表盘、物料申请详情/新建、Golden Record、元数据治理、分类管理、审计追踪 |
+| src/App.tsx | 35 | **路由定义**：登录、仪表盘、物料申请详情/新建、金标数据、元数据治理、分类管理、审计追踪 |
 | src/App.css | 37 | 应用级样式（Vite 默认，未定制） |
 | src/index.css | 72 | 全局样式（Tailwind 指令） |
 
@@ -61,7 +61,7 @@ D:\AI\数据治理\
 | /applications | Applications.tsx | 登录 | 物料申请列表 - 搜索/状态筛选/分页 |
 | /applications/new | NewApplication.tsx | 登录 | 新建申请 - 三级分类选择/动态表单/附件上传/质量校验 |
 | /applications/:id | ApplicationDetail.tsx | 登录 | 申请详情 - 状态流转/审批操作/发布/审计追踪 |
-| /golden-records | GoldenRecords.tsx | 登录 | Golden Record 卡片视图 - 搜索/状态/版本/BTP/OM |
+| /golden-records | GoldenRecords.tsx | 登录 | 金标数据 卡片视图 - 搜索/状态/版本/BTP/OM |
 | /metadata-governance | MetadataGovernance.tsx | 登录 | **元数据治理看板** - 元数据目录/血缘图谱/质量测试/审计轨迹 |
 | /classifications | Classifications.tsx | 登录 | 物料分类树 - 三级分类展示 |
 | /audit/:id | AuditTrace.tsx | 登录 | 全链路审计追踪 - 申请全生命周期步骤 |
@@ -117,7 +117,7 @@ D:\AI\数据治理\
 | pi/applications.py | 566 | 物料申请 CRUD、草稿编辑、提交、管理员/部门审批、发布、附件上传下载、审计 |
 | pi/classifications.py | 58 | 分类树读取、分类详情、属性模板读取与创建 |
 | pi/dashboard.py | 46 | 仪表盘 KPI、健康检查、BTP Mock 健康检查 |
-| pi/golden_records.py | 43 | Golden Record 列表、详情、按编码查询 |
+| pi/golden_records.py | 43 | 金标数据 列表、详情、按编码查询 |
 | pi/metadata_governance.py | 137 | 元数据治理概览 |
 | pi/__init__.py | 1 | 包初始化 |
 
@@ -231,16 +231,16 @@ ExternalSystemLog (外部系统交互日志：OpenMetadata / BTP，独立表)
 | GET | /api/classifications/:id/templates | 属性模板列表 |
 | POST | /api/classifications/:id/templates | 创建属性模板 |
 
-### 5.4 仪表盘 / Golden Record / 元数据治理
+### 5.4 仪表盘 / 金标数据 / 元数据治理
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
 | GET | /api/dashboard | 仪表盘数据 |
 | GET | /api/health | 健康检查 |
 | GET | /api/btp-mock/health | BTP Mock 健康检查 |
-| GET | /api/golden-records/ | Golden Record 列表 |
-| GET | /api/golden-records/:id | Golden Record 详情 |
-| GET | /api/golden-records/code/:material_code | 按编码查询 Golden Record |
+| GET | /api/golden-records/ | 金标数据 列表 |
+| GET | /api/golden-records/:id | 金标数据 详情 |
+| GET | /api/golden-records/code/:material_code | 按编码查询 金标数据 |
 | GET | /api/metadata-governance/overview | 元数据治理概览 |
 
 ---
@@ -286,7 +286,7 @@ submit_application()
 
 `
 publish_application()
-  ├── Step 1: create_golden_record()        → Golden Record 表
+  ├── Step 1: create_golden_record()        → 金标数据 表
   ├── Step 2: BTPMockService.publish()      → 模拟 BTP 发布
   ├── Step 3: OpenMetadataSync.sync_material() → OM 同步
   └── Step 4: OpenMetadataSync.run_quality_tests() → 质量测试
