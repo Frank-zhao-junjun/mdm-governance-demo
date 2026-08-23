@@ -479,7 +479,7 @@ def dept_approve(
         details={"approved": True, "comment": data.comment}
     )
     
-    return {"success": True, "message": "部门审批通过，物料已生效"}
+    return {"success": True, "message": "部门审批通过，等待发布"}
 
 
 @router.post("/{app_id}/publish")
@@ -495,6 +495,10 @@ def publish_application(
     
     if app.status != models.ApplicationStatus.APPROVED:
         raise HTTPException(status_code=400, detail="申请未通过审批，不能发布")
+    
+    # Idempotency check: prevent duplicate publish
+    if app.published_at:
+        raise HTTPException(status_code=400, detail="申请已发布，不能重复发布")
     
     audit = AuditService(db)
     
@@ -580,7 +584,8 @@ def publish_application(
         
         # Update application status
         crud.update_application(db, app_id, {
-            "status": models.ApplicationStatus.PUBLISHED
+            "status": models.ApplicationStatus.PUBLISHED,
+            "published_at": datetime.now(timezone.utc)
         })
         
         return {

@@ -144,6 +144,9 @@ class MaterialApplication(Base):
     dept_approved = Column(Boolean, default=False)
     dept_comment = Column(Text, nullable=True)
     
+    # 发布信息
+    published_at = Column(DateTime, nullable=True)
+    
     # 关联
     classification = relationship("MaterialClassification")
     golden_record = relationship("GoldenRecord", back_populates="application", uselist=False)
