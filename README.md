@@ -1,4 +1,4 @@
-# RalphLoop MDM Governance — 制造业物料主数据治理平台
+# 制造业数据治理平台
 
 > **物料主数据全生命周期管理平台**：从申请、校验、去重、编码、审批到发布的端到端治理闭环。
 > **技术栈**: React 19 + FastAPI + SQLite/PostgreSQL | **版本**: v1.0.0
@@ -12,9 +12,9 @@
 | 知识图谱 | [`docs/knowledge-graph.md`](./docs/knowledge-graph.md) — 完整代码资产映射（文件级） |
 | 后端 API | `backend/app/` — FastAPI 路由、数据模型、业务服务 |
 | 前端 SPA | `src/` — React 页面、组件、类型定义 |
-| 测试 | `backend/tests/` — pytest 集成 + 单元测试 |
+| 测试 | `backend/tests/` — 153 个 pytest 集成 + 单元测试 |
 | Coze 部署 | `scripts/` — 预览/部署 Shell 脚本 |
-| 任务追踪 | `.superpowers/sdd/` — SDD 任务分片 |
+| 项目规范 | [`AGENTS.md`](./AGENTS.md) — 技术栈、目录结构、安全约束、长期记忆 |
 
 ---
 
@@ -29,20 +29,20 @@
 
 ### 前端
 
-`ash
+```bash
 pnpm install
 pnpm dev          # 开发服务器 → http://localhost:3000
 pnpm build        # 构建到 dist/
-`
+```
 
 ### 后端
 
-`ash
+```bash
 cd backend
 uv pip install --system -r requirements.txt   # 安装依赖
 python init_db.py                              # 初始化数据库+种子数据
 uvicorn app.main:app --reload --port 8000      # 启动 API → http://localhost:8000/docs
-`
+```
 
 ### 访问入口
 
@@ -55,9 +55,21 @@ uvicorn app.main:app --reload --port 8000      # 启动 API → http://localhost
 
 ---
 
+## 登录凭据
+
+| 角色 | 用户名 | 密码 | 部门 |
+|------|--------|------|------|
+| 管理员 | `admin001` | `adminpass001` | IT部 |
+| 申请人 | `user001` | `password001` | 研发部 |
+| 申请人 | `user002` | `password002` | 采购部 |
+| 部门审批 | `dept001` | `deptpass001` | 生产部 |
+| 数据管理员 | `data001` | `datapass001` | 数据治理部 |
+
+---
+
 ## 系统架构
 
-`
+```
 ┌────────────────────────────────────────────────────────────────────┐
 │  Frontend (React 19 + Vite 7 + Tailwind)                           │
 │  ┌─────────┐ ┌─────────┐ ┌─────────────┐ ┌─────────────┐          │
@@ -78,7 +90,7 @@ uvicorn app.main:app --reload --port 8000      # 启动 API → http://localhost
 │  │ 5 routers    │ │ 6 services       │ │ 7 tables     │           │
 │  └──────────────┘ └──────────────────┘ └──────────────┘           │
 └────────────────────────────────────────────────────────────────────┘
-`
+```
 
 ### 核心模块
 
@@ -94,19 +106,19 @@ uvicorn app.main:app --reload --port 8000      # 启动 API → http://localhost
 
 ## 主数据治理流程
 
-`
+```
 新建申请 → 保存草稿 → 提交 → 质量校验 → 重复预检 → 编码生成
                                               ↓
               管理员审批 ← 部门审批 ← 待审批 ←┘
                  ↓
               已批准 → 发布 → 创建 Golden Record → BTP 发布 + OpenMetadata 同步
-`
+```
 
 ### 提交自动执行链
 
 1. **质量校验** (`MaterialValidator`) — 必填字段/名称长度/分类/属性模板
 2. **重复预检** (`DuplicateDetector`) — ILIKE + 前缀模糊 + 关键词重罚
-3. **编码生成** (`CodeGenerator`) — 编码规则 + 原子序列递增
+3. **编码生成** (`CodeGenerator`) — 编码规则 + 原子序列递增（`UPDATE...RETURNING` 单语句保证并发安全）
 
 ### 发布流程
 
@@ -116,22 +128,75 @@ uvicorn app.main:app --reload --port 8000      # 启动 API → http://localhost
 
 ---
 
+## 安全特性
+
+| 能力 | 说明 |
+|------|------|
+| JWT 认证 | 所有 API 必须携带有效 JWT，无免认证回退 |
+| 密钥管理 | 生产环境强制 `MDM_SECRET_KEY` 环境变量，缺失即 fail-fast |
+| 附件上传 | 类型黑名单（HTML/SVG/JS 等可执行类型）+ 10MB 流式大小限制 |
+| 附件下载 | 强制 `application/octet-stream` + `Content-Disposition: attachment`，防存储型 XSS |
+| 编码并发 | `increment_seq` 使用单语句 `UPDATE...RETURNING`，消除重复编码竞态 |
+
+---
+
 ## 测试
 
-`ash
+```bash
 cd backend
-pytest                          # 运行全部测试
+pytest                          # 运行全部 153 个测试
 pytest -v                       # 详细输出
 pytest tests/test_auth.py       # 仅认证测试
 pytest tests/test_api.py        # API 集成测试
-`
+```
+
+### E2E 测试
+
+```bash
+cd backend
+python e2e_test.py              # 端到端流程验证（需后端运行中）
+```
+
+---
+
+## CI/CD
+
+GitHub Actions 工作流（`.github/workflows/ci.yml`）包含两个 job：
+
+| Job | 内容 |
+|-----|------|
+| `frontend-check` | `tsc --noEmit` + `pnpm build` |
+| `backend-tests` | Python 3.12 + `pytest`（`ENV=test`，SQLite in-memory） |
+
+---
+
+## 预览与部署（Coze 平台）
+
+### 预览（开发模式）
+
+```
+Vite dev server (:5000)  ──proxy /api──▶  FastAPI (:8000)
+```
+
+- 构建：`scripts/coze-preview-build.sh`（pnpm install + uv pip + init_db）
+- 运行：`scripts/coze-preview-run.sh`（后端 :8000 + Vite :5000）
+
+### 部署（生产模式）
+
+```
+FastAPI/uvicorn (:5000)  ── 同时服务 API + SPA 静态文件 (dist/)
+```
+
+- 构建：`scripts/coze-deploy-build.sh`（pnpm build + uv pip + init_db）
+- 运行：`scripts/coze-deploy-run.sh`（`ENV=production`，自动生成 JWT 密钥）
+
+> 预览/部署脚本中 `OM_ENABLED` 和 `BTP_ENABLED` 显式设为 `false`。
 
 ---
 
 ## 项目结构速览
 
-`
-D:\AI\数据治理\
+```
 ├── src/                        # 前端 SPA (React 19 + TypeScript)
 │   ├── App.tsx                 #   路由定义（9 页面）
 │   ├── main.tsx                #   React 入口
@@ -139,34 +204,34 @@ D:\AI\数据治理\
 │   ├── components/             #   Layout + shadcn/ui 组件库
 │   ├── hooks/                  #   自定义 hooks
 │   ├── types/api.ts            #   TypeScript 类型定义
-│   └── lib/                    #   工具库（utils.ts；api.ts 待创建）
+│   └── lib/                    #   工具库（api.ts API 客户端 + utils.ts）
 ├── backend/                    # 后端 API (Python 3.12 + FastAPI)
 │   ├── app/
-│   │   ├── main.py             #   FastAPI 入口 + 路由注册
+│   │   ├── main.py             #   FastAPI 入口 + 路由注册 + SPA fallback
 │   │   ├── models.py           #   SQLAlchemy 数据模型（7 表）
 │   │   ├── schemas.py          #   Pydantic 请求/响应模型
-│   │   ├── crud.py             #   CRUD 操作
+│   │   ├── crud.py             #   CRUD 操作（含原子编码生成）
 │   │   ├── api/                #   5 个 API 路由模块
-│   │   ├── core/               #   配置/数据库/认证/兼容
+│   │   ├── core/               #   配置/数据库/认证
 │   │   └── services/           #   6 个业务服务
 │   ├── init_db.py              #   数据库初始化 + 种子数据
 │   ├── requirements.txt        #   Python 依赖
-│   └── tests/                  #   pytest 测试
+│   └── tests/                  #   153 个 pytest 测试
+├── scripts/                    #   Coze 平台构建/部署脚本
 ├── docs/
 │   └── knowledge-graph.md      #   完整代码资产图谱
-├── scripts/                    #   Coze 平台构建/部署脚本
-├── data/                       #   运行时数据库 + YAML 配置
-├── assets/                     #   静态资源
+├── e2e_test.py                 #   E2E 端到端测试脚本
 ├── AGENTS.md                   #   项目工作区规则
 ├── README.md                   #   本文件：项目入口
 ├── info.md                     #   项目初始化信息
+├── .coze                       #   Coze 平台配置
 ├── vite.config.ts              #   Vite 构建/代理配置
 ├── package.json                #   前端依赖（pnpm）
 ├── pnpm-lock.yaml              #   pnpm 锁文件
 ├── components.json             #   shadcn/ui 配置
 ├── tailwind.config.js          #   Tailwind CSS 配置
 └── tsconfig.json               #   TypeScript 根配置
-`
+```
 
 ---
 
@@ -174,15 +239,16 @@ D:\AI\数据治理\
 
 | 变量 | 默认值 | 说明 |
 |------|--------|------|
-| `SQLALCHEMY_DATABASE_URL` | `postgresql://mdg_user:mdg_password@localhost:5432/mdm_governance` | 数据库连接（开发自动降级 SQLite） |
+| `SQLALCHEMY_DATABASE_URL` | `sqlite:///./mdm_governance.db` | 数据库连接（生产使用 PostgreSQL） |
+| `MDM_SECRET_KEY` | — | **生产环境必填**。JWT 签名密钥，缺失时启动 fail-fast |
+| `ENV` | `development` | 运行环境：`development` / `production` / `test` |
 | `OPENMETADATA_HOST` | `http://localhost:8585/api` | OpenMetadata API 地址 |
 | `OPENMETADATA_TOKEN` | `""` | OM 认证 Token |
 | `OM_ENABLED` | `true` | OpenMetadata 开关 |
 | `BTP_MOCK_URL` | `http://localhost:8888` | BTP Mock 地址 |
 | `BTP_ENABLED` | `true` | BTP 开关 |
-| `ENV` | `development` | 环境（development → DEBUG） |
 
-> 注意：预览/部署脚本中会将 `OM_ENABLED` 和 `BTP_ENABLED` 显式设为 `false`。
+> 预览/部署脚本中会将 `OM_ENABLED` 和 `BTP_ENABLED` 显式设为 `false`。
 
 ---
 
@@ -193,29 +259,16 @@ D:\AI\数据治理\
 | React 19 + TypeScript | Python 3.12 + FastAPI | Vite 7 |
 | shadcn/ui (new-york) | SQLAlchemy 2.0 + Pydantic v2 | pnpm / uv |
 | Tailwind CSS 3.4 | JWT (python-jose) + bcrypt | pytest |
-| react-router-dom v7 | SQLite / PostgreSQL | node:test |
+| react-router-dom v7 | SQLite / PostgreSQL | GitHub Actions |
 | recharts | uvicorn | Coze 平台 |
 | sonner (Toast) | requests + httpx | Git |
 
 ---
 
-## 登录凭据
-
-用户认证为 Mock 字典（`backend/app/core/auth.py` 中 `MOCK_USERS`），共 5 个账号：
-
-| 角色 | 用户名 | 密码 | 部门 |
-|------|--------|------|------|
-| 申请人 | `user001` | `password001` | 研发部 |
-| 申请人 | `user002` | `password002` | 采购部 |
-| 管理员 | `admin001` | `adminpass001` | IT部 |
-| 部门审批 | `dept001` | `deptpass001` | 生产部 |
-| 数据管理员 | `data001` | `datapass001` | 数据治理部 |
-
----
-
 ## 待办
 
-- [ ] 创建 `src/lib/api.ts`（前端 API 客户端，当前文件缺失）
+- [ ] 用户库 `MOCK_USERS` 迁入数据库（当前硬编码于 `auth.py`）
 - [ ] 生产环境 PostgreSQL 迁移脚本
 - [ ] OpenMetadata 真实接入验证
 - [ ] Docker 部署配置
+- [ ] 前端 17 个预存 eslint 错误修复后可将 `pnpm lint` 加入 CI
