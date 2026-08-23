@@ -308,6 +308,51 @@
                 <h2>🔗 什么是 BTP/CPI？（外部系统集成）</h2>
                 <p>在制造业中，物料主数据需要在多个系统间同步。本系统通过 <strong>SAP BTP</strong> 实现与 ERP、采购等系统的集成。</p>
                 
+                <h3>📋 端到端流程</h3>
+                <div class="diagram" style="background: #f3e5f5;">
+                    <h3 style="color: #7b1fa2;">物料主数据全生命周期</h3>
+                    <div class="flow">
+                        <div class="flow-item" style="background: #9c27b0; color: white; border-color: #9c27b0;">
+                            物料申请<br/>
+                            <small>用户提交</small>
+                        </div>
+                        <div class="flow-arrow">→</div>
+                        <div class="flow-item" style="background: #9c27b0; color: white; border-color: #9c27b0;">
+                            审批通过<br/>
+                            <small>多级审批</small>
+                        </div>
+                        <div class="flow-arrow">→</div>
+                        <div class="flow-item" style="background: #9c27b0; color: white; border-color: #9c27b0;">
+                            生成金标数据<br/>
+                            <small>唯一权威</small>
+                        </div>
+                        <div class="flow-arrow">→</div>
+                        <div class="flow-item" style="background: #ff9800; color: white; border-color: #ff9800;">
+                            BTP 发布<br/>
+                            <small>CPI 同步</small>
+                        </div>
+                        <div class="flow-arrow">→</div>
+                        <div class="flow-item" style="background: #4caf50; color: white; border-color: #4caf50;">
+                            SAP 系统生效<br/>
+                            <small>业务可用</small>
+                        </div>
+                    </div>
+                    <div style="margin-top: 20px; display: flex; justify-content: center; gap: 40px; flex-wrap: wrap;">
+                        <div style="text-align: center;">
+                            <div style="background: #4caf50; color: white; padding: 8px 16px; border-radius: 4px; margin-bottom: 8px;">S/4HANA</div>
+                            <small>ERP 系统</small>
+                        </div>
+                        <div style="text-align: center;">
+                            <div style="background: #4caf50; color: white; padding: 8px 16px; border-radius: 4px; margin-bottom: 8px;">SAP Ariba</div>
+                            <small>采购系统</small>
+                        </div>
+                        <div style="text-align: center;">
+                            <div style="background: #4caf50; color: white; padding: 8px 16px; border-radius: 4px; margin-bottom: 8px;">MES</div>
+                            <small>生产系统</small>
+                        </div>
+                    </div>
+                </div>
+
                 <h3>📦 SAP BTP（业务技术平台）</h3>
                 <p><strong>SAP Business Technology Platform</strong> 是 SAP 提供的云端业务平台，用于连接和集成各种业务系统。</p>
                 <div class="diagram" style="background: #e3f2fd;">
