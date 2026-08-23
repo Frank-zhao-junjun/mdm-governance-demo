@@ -332,6 +332,60 @@ class TestPublishEndpoints:
         """TC-API-042: Publish nonexistent application should 404."""
         response = admin_client.post("/api/applications/non-existent/publish")
         assert response.status_code == 404
+    
+    def test_publish_idempotency(self, admin_client, seeded_db, sample_application):
+        """TC-API-043: Duplicate publish should fail (idempotency)."""
+        from app import crud
+        # First publish
+        crud.update_application(seeded_db, sample_application.id, {
+            "status": models.ApplicationStatus.APPROVED,
+            "material_code": "M01-0101-00002"
+        })
+        response1 = admin_client.post(f"/api/applications/{sample_application.id}/publish")
+        assert response1.status_code == 200
+        
+        # Second publish should fail
+        response2 = admin_client.post(f"/api/applications/{sample_application.id}/publish")
+        assert response2.status_code == 400
+        assert "已发布" in response2.json()["detail"]
+
+
+class TestApprovalAuthorization:
+    """Test approval authorization controls."""
+    
+    def test_applicant_cannot_admin_approve(self, client, seeded_db, sample_application):
+        """TC-API-034: Applicant cannot admin approve."""
+        from app import crud
+        crud.update_application(seeded_db, sample_application.id, {
+            "status": models.ApplicationStatus.PENDING_ADMIN
+        })
+        response = client.post(
+            f"/api/applications/{sample_application.id}/admin-approve",
+            json={"approved": True, "comment": "测试"}
+        )
+        assert response.status_code == 403
+    
+    def test_applicant_cannot_dept_approve(self, client, seeded_db, sample_application):
+        """TC-API-035: Applicant cannot dept approve."""
+        from app import crud
+        crud.update_application(seeded_db, sample_application.id, {
+            "status": models.ApplicationStatus.PENDING_DEPT
+        })
+        response = client.post(
+            f"/api/applications/{sample_application.id}/dept-approve",
+            json={"approved": True, "comment": "测试"}
+        )
+        assert response.status_code == 403
+    
+    def test_applicant_cannot_publish(self, client, seeded_db, sample_application):
+        """TC-API-036: Applicant cannot publish."""
+        from app import crud
+        crud.update_application(seeded_db, sample_application.id, {
+            "status": models.ApplicationStatus.APPROVED,
+            "material_code": "M01-0101-00003"
+        })
+        response = client.post(f"/api/applications/{sample_application.id}/publish")
+        assert response.status_code == 403
 
 
 class TestAuditEndpoints:

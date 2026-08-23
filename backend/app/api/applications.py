@@ -493,12 +493,12 @@ def publish_application(
     if not app:
         raise HTTPException(status_code=404, detail="申请单不存在")
     
+    # Idempotency check: prevent duplicate publish
+    if app.published_at or app.status == models.ApplicationStatus.PUBLISHED:
+        raise HTTPException(status_code=400, detail="申请已发布，不能重复发布")
+    
     if app.status != models.ApplicationStatus.APPROVED:
         raise HTTPException(status_code=400, detail="申请未通过审批，不能发布")
-    
-    # Idempotency check: prevent duplicate publish
-    if app.published_at:
-        raise HTTPException(status_code=400, detail="申请已发布，不能重复发布")
     
     audit = AuditService(db)
     
