@@ -68,6 +68,11 @@ const Login: React.FC = () => {
             <p>测试账号: user001 / password001 (申请人)</p>
             <p>admin001 / adminpass001 (管理员)</p>
             <p>dept001 / deptpass001 (部门审批)</p>
+            <p className="pt-2">
+              <a href="/about.html" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">
+                项目介绍
+              </a>
+            </p>
           </div>
         </CardContent>
       </Card>

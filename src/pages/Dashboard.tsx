@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { FileText, Database, FolderTree, CheckCircle, Clock, Info } from 'lucide-react';
+import { FileText, Database, FolderTree, CheckCircle, Clock } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -81,12 +81,6 @@ const Dashboard: React.FC = () => {
             新增物料申请
           </Button>
         </Link>
-        <a href="/about.html" target="_blank" rel="noopener noreferrer">
-          <Button variant="outline" className="border-purple-600 text-purple-600 hover:bg-purple-50">
-            <Info className="w-4 h-4 mr-2" />
-            项目原理介绍
-          </Button>
-        </a>
       </div>
 
       {/* Recent Applications */}
