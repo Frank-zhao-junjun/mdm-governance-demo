@@ -12,13 +12,18 @@ def ensure_schema_compatibility() -> None:
         return
 
     column_names = {column["name"] for column in inspector.get_columns("material_applications")}
-    if "attachments" in column_names:
-        seed_demo_three_level_classifications()
-        return
+    missing_columns = []
+    if "attachments" not in column_names:
+        missing_columns.append("attachments JSON")
+    if "published_at" not in column_names:
+        missing_columns.append("published_at DATETIME")
 
-    column_type = "JSON" if engine.dialect.name != "sqlite" else "JSON"
-    with engine.begin() as connection:
-        connection.execute(text(f"ALTER TABLE material_applications ADD COLUMN attachments {column_type}"))
+    if missing_columns:
+        with engine.begin() as connection:
+            for column_definition in missing_columns:
+                connection.execute(text(
+                    f"ALTER TABLE material_applications ADD COLUMN {column_definition}"
+                ))
 
     seed_demo_three_level_classifications()
 

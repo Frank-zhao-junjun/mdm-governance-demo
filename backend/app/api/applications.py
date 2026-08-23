@@ -492,6 +492,12 @@ def publish_application(
     app = crud.get_application(db, app_id)
     if not app:
         raise HTTPException(status_code=404, detail="申请单不存在")
+
+    if app.published_at or app.status in (
+        models.ApplicationStatus.PUBLISHING,
+        models.ApplicationStatus.PUBLISHED,
+    ):
+        raise HTTPException(status_code=400, detail="申请已发布，不能重复发布")
     
     # Idempotency check: prevent duplicate publish
     if app.published_at or app.status == models.ApplicationStatus.PUBLISHED:
@@ -499,6 +505,9 @@ def publish_application(
     
     if app.status != models.ApplicationStatus.APPROVED:
         raise HTTPException(status_code=400, detail="申请未通过审批，不能发布")
+
+    if not crud.claim_application_for_publish(db, app_id):
+        raise HTTPException(status_code=409, detail="申请正在被其他请求发布")
     
     audit = AuditService(db)
     
@@ -516,6 +525,18 @@ def publish_application(
         gr = crud.create_golden_record(
             db, gr_data, application_id=app.id, user_id=app.created_by
         )
+
+        btp_task = crud.create_publish_sync_task(db, app.id, gr.id, "btp", "publish")
+        om_task = crud.create_publish_sync_task(db, app.id, gr.id, "openmetadata", "sync")
+        task_started_at = datetime.now(timezone.utc)
+        crud.update_publish_sync_task(db, btp_task.id, {
+            "status": "running", "attempt_count": 1, "started_at": task_started_at,
+            "request_payload": {"material_code": gr.material_code},
+        })
+        crud.update_publish_sync_task(db, om_task.id, {
+            "status": "running", "attempt_count": 1, "started_at": task_started_at,
+            "request_payload": {"material_code": gr.material_code},
+        })
         
         audit.log(
             application_id=app.id,
@@ -537,6 +558,15 @@ def publish_application(
                 "btp_published_at": datetime.now(timezone.utc),
                 "btp_sync_id": btp_result["sync_id"]
             })
+            crud.update_publish_sync_task(db, btp_task.id, {
+                "status": "succeeded", "completed_at": datetime.now(timezone.utc),
+                "response_payload": btp_result,
+            })
+        else:
+            crud.update_publish_sync_task(db, btp_task.id, {
+                "status": "failed", "next_retry_at": datetime.now(timezone.utc),
+                "last_error": btp_result.get("error"), "response_payload": btp_result,
+            })
         
         audit.log(
             application_id=app.id,
@@ -557,6 +587,15 @@ def publish_application(
                 "om_synced": True,
                 "om_synced_at": datetime.now(timezone.utc),
                 "om_entity_fqn": om_result.get("entity_fqn")
+            })
+            crud.update_publish_sync_task(db, om_task.id, {
+                "status": "succeeded", "completed_at": datetime.now(timezone.utc),
+                "response_payload": om_result,
+            })
+        else:
+            crud.update_publish_sync_task(db, om_task.id, {
+                "status": "failed", "next_retry_at": datetime.now(timezone.utc),
+                "last_error": om_result.get("error"), "response_payload": om_result,
             })
         
         audit.log(
@@ -582,7 +621,21 @@ def publish_application(
             details=test_result
         )
         
-        # Update application status
+        if not btp_result["success"] or not om_result["success"]:
+            return {
+                "success": False,
+                "message": "Golden Record 已创建，但外部同步未完成，请执行补偿重试",
+                "status": models.ApplicationStatus.PUBLISHING.value,
+                "golden_record_id": gr.id,
+                "btp": btp_result,
+                "openmetadata": om_result,
+                "sync_tasks": [
+                    schemas.PublishSyncTaskResponse.model_validate(btp_task),
+                    schemas.PublishSyncTaskResponse.model_validate(om_task),
+                ],
+            }
+
+        # Update application status only after all external targets succeed.
         crud.update_application(db, app_id, {
             "status": models.ApplicationStatus.PUBLISHED,
             "published_at": datetime.now(timezone.utc)
@@ -599,9 +652,11 @@ def publish_application(
         }
         
     except HTTPException:
+        crud.update_application(db, app_id, {"status": models.ApplicationStatus.APPROVED})
         raise
     except Exception as e:
         db.rollback()
+        crud.update_application(db, app_id, {"status": models.ApplicationStatus.APPROVED})
         audit.log(
             application_id=app.id,
             step_name="publish",

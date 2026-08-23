@@ -3,7 +3,10 @@ import pytest
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
 from app import models, crud, schemas
+from app.core.database import Base
 
 
 class TestApplicationCRUD:
@@ -51,6 +54,16 @@ class TestApplicationCRUD:
         """TC-CRUD-005: Update non-existent returns None."""
         result = crud.update_application(seeded_db, "non-existent", {"material_name": "test"})
         assert result is None
+
+    def test_claim_application_for_publish_is_single_winner(self, seeded_db, sample_application):
+        """Only an approved, unpublished application can be claimed."""
+        crud.update_application(seeded_db, sample_application.id, {
+            "status": models.ApplicationStatus.APPROVED
+        })
+
+        assert crud.claim_application_for_publish(seeded_db, sample_application.id) is True
+        assert crud.claim_application_for_publish(seeded_db, sample_application.id) is False
+        assert crud.get_application(seeded_db, sample_application.id).status == models.ApplicationStatus.PUBLISHING
 
     def test_list_applications(self, seeded_db):
         """TC-CRUD-006: List applications with pagination."""
@@ -140,25 +153,33 @@ class TestIncrementSeqAtomicity:
         # For SQLite in-memory, seq2 will be a new database
         # So we just verify the basic increment works
 
-    def test_concurrent_increments_no_duplicates(self, seeded_db):
+    def test_concurrent_increments_no_duplicates(self, seeded_db, tmp_path):
         """TC-CRUD-014: Concurrent increments should produce unique values.
         
         This test simulates concurrent requests by calling increment_seq
         rapidly from multiple threads.
         """
-        # SQLite in-memory might not handle true concurrency well,
-        # but we test the atomic SQL pattern at least conceptually
-        rule = seeded_db.query(models.CodeRule).filter_by(id="rule-001").first()
-        rule.current_seq = 0
-        seeded_db.commit()
+        # Use a file-backed database so each worker has an independent connection.
+        concurrent_engine = create_engine(f"sqlite:///{tmp_path / 'concurrency.db'}")
+        Base.metadata.create_all(bind=concurrent_engine)
+        concurrent_session = sessionmaker(bind=concurrent_engine)
+        setup_db = concurrent_session()
+        setup_db.add(models.CodeRule(
+            id="rule-001",
+            name="concurrent rule",
+            pattern="{流水}",
+            current_seq=0,
+            seq_length=5,
+        ))
+        setup_db.commit()
+        setup_db.close()
         
         sequences = []
         
         def increment():
             try:
                 # Each thread gets its own session to simulate real concurrency
-                from app.core.database import SessionLocal
-                db = SessionLocal()
+                db = concurrent_session()
                 seq = crud.increment_seq(db, "rule-001")
                 sequences.append(seq)
                 db.close()
@@ -175,6 +196,8 @@ class TestIncrementSeqAtomicity:
         # All successful increments should be unique
         if len(sequences) > 1:
             assert len(sequences) == len(set(sequences)), f"Duplicate sequences found: {sequences}"
+
+        concurrent_engine.dispose()
 
 
 class TestGoldenRecordCRUD:

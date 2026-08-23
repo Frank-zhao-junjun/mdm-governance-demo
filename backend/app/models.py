@@ -6,7 +6,7 @@ def _now_utc():
     return datetime.now(timezone.utc)
 from enum import Enum as PyEnum
 
-from sqlalchemy import Column, String, Integer, Boolean, Text, DateTime, ForeignKey, JSON, Enum
+from sqlalchemy import Column, String, Integer, Boolean, Text, DateTime, ForeignKey, JSON, Enum, UniqueConstraint
 from sqlalchemy.orm import relationship
 
 from app.core.database import Base
@@ -27,8 +27,17 @@ class ApplicationStatus(str, PyEnum):
     PENDING_ADMIN = "pending_admin"
     PENDING_DEPT = "pending_dept"
     APPROVED = "approved"
+    PUBLISHING = "publishing"
     REJECTED = "rejected"
     PUBLISHED = "published"
+
+
+class GoldenRecordVersionStatus(str, PyEnum):
+    PENDING_APPROVAL = "pending_approval"
+    APPROVED = "approved"
+    PUBLISHED = "published"
+    INVALIDATED = "invalidated"
+    ROLLED_BACK = "rolled_back"
 
 
 class GoldenRecordStatus(str, PyEnum):
@@ -143,6 +152,9 @@ class MaterialApplication(Base):
     dept_approved_at = Column(DateTime, nullable=True)
     dept_approved = Column(Boolean, default=False)
     dept_comment = Column(Text, nullable=True)
+
+    # 发布信息
+    published_at = Column(DateTime, nullable=True)
     
     # 发布信息
     published_at = Column(DateTime, nullable=True)
@@ -214,6 +226,39 @@ class GoldenRecord(Base):
     # 关联
     application = relationship("MaterialApplication", back_populates="golden_record")
     classification = relationship("MaterialClassification")
+    versions = relationship("GoldenRecordVersion", back_populates="golden_record", order_by="GoldenRecordVersion.version_number")
+
+
+class GoldenRecordVersion(Base):
+    """Immutable snapshot for every Golden Record lifecycle change."""
+    __tablename__ = "golden_record_versions"
+    __table_args__ = (
+        UniqueConstraint("golden_record_id", "version_number", name="uq_gr_version_number"),
+    )
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    golden_record_id = Column(String(36), ForeignKey("golden_records.id"), nullable=False, index=True)
+    parent_version_id = Column(String(36), ForeignKey("golden_record_versions.id"), nullable=True)
+    version_number = Column(Integer, nullable=False)
+
+    material_code = Column(String(50), nullable=False)
+    material_name = Column(String(200), nullable=False)
+    material_desc = Column(Text, nullable=True)
+    classification_id = Column(String(36), nullable=False)
+    attribute_values = Column(JSON, nullable=True)
+    material_type = Column(Enum(MaterialType), nullable=False)
+
+    status = Column(Enum(GoldenRecordVersionStatus), nullable=False)
+    change_type = Column(String(30), nullable=False)
+    change_reason = Column(Text, nullable=True)
+    created_by = Column(String(50), nullable=False)
+    approved_by = Column(String(50), nullable=True)
+    created_at = Column(DateTime, default=_now_utc)
+    approved_at = Column(DateTime, nullable=True)
+    published_at = Column(DateTime, nullable=True)
+
+    golden_record = relationship("GoldenRecord", back_populates="versions")
+    parent_version = relationship("GoldenRecordVersion", remote_side=[id])
 
 
 class AuditLog(Base):
@@ -266,3 +311,28 @@ class ExternalSystemLog(Base):
     
     executed_at = Column(DateTime, default=_now_utc)
     duration_ms = Column(Integer, nullable=True)
+
+
+class PublishSyncTask(Base):
+    """Durable retry task for one external publish target."""
+    __tablename__ = "publish_sync_tasks"
+    __table_args__ = (
+        UniqueConstraint("application_id", "system_name", name="uq_publish_task_target"),
+    )
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    application_id = Column(String(36), ForeignKey("material_applications.id"), nullable=False, index=True)
+    golden_record_id = Column(String(36), ForeignKey("golden_records.id"), nullable=False, index=True)
+    system_name = Column(String(20), nullable=False)
+    operation = Column(String(50), nullable=False)
+    status = Column(String(20), nullable=False, default="pending")
+    attempt_count = Column(Integer, nullable=False, default=0)
+    max_attempts = Column(Integer, nullable=False, default=5)
+    next_retry_at = Column(DateTime, nullable=True)
+    started_at = Column(DateTime, nullable=True)
+    completed_at = Column(DateTime, nullable=True)
+    last_error = Column(Text, nullable=True)
+    request_payload = Column(JSON, nullable=True)
+    response_payload = Column(JSON, nullable=True)
+    created_at = Column(DateTime, default=_now_utc)
+    updated_at = Column(DateTime, default=_now_utc, onupdate=_now_utc)

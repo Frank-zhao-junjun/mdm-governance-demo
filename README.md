@@ -28,7 +28,6 @@
 - **uv**（Python 包管理器）
 
 ### 前端
-
 ```bash
 pnpm install
 pnpm dev          # 开发服务器 → http://localhost:3000
@@ -125,6 +124,27 @@ uvicorn app.main:app --reload --port 8000      # 启动 API → http://localhost
 1. **创建 Golden Record** — 成为权威主数据
 2. **BTP 发布** — Mock SAP BTP 发布
 3. **OpenMetadata 同步** — 元数据目录 + 质量测试
+
+### Golden Record 生命周期
+
+每次初始发布、修订、失效和回滚都会在 `golden_record_versions` 保存不可变快照，并记录父版本、变更原因、操作人和时间。
+
+| 流程 | 状态变化 | API |
+|------|----------|-----|
+| 修订 | 当前生效 → 待审批 → 已批准 → 已发布（新版本） | `POST /api/golden-records/{id}/revisions`，以及版本 `approve`、`publish` |
+| 失效 | 当前生效 → 失效审批 → 已失效 | `POST /api/golden-records/{id}/invalidation`，以及 `invalidation-approve` |
+| 回滚 | 已发布 → 生成新的回滚版本，恢复上一版本数据 | `POST /api/golden-records/{id}/rollback` |
+| 版本历史 | 查询全部快照 | `GET /api/golden-records/{id}/versions` |
+
+申请发布使用 `PUBLISHING` 临时状态和数据库条件更新进行原子占位。BTP 和 OpenMetadata 分别记录在 `publish_sync_tasks` 中，失败任务可以超时扫描并由管理员重新置为 `pending`。
+
+管理员任务接口：
+
+- `GET /api/publish-sync-tasks`
+- `POST /api/publish-sync-tasks/recover-timeouts?timeout_minutes=15`
+- `POST /api/publish-sync-tasks/{task_id}/retry`
+
+当前已完成任务持久化、超时标记和人工重新入队；后台 worker、指数退避、死信队列以及真实外部系统幂等重试仍属于后续生产化工作。
 
 ---
 
@@ -268,6 +288,8 @@ FastAPI/uvicorn (:5000)  ── 同时服务 API + SPA 静态文件 (dist/)
 ## 待办
 
 - [ ] 用户库 `MOCK_USERS` 迁入数据库（当前硬编码于 `auth.py`）
+- [ ] 后台 worker、指数退避和死信队列
+- [ ] 统一领域状态机，收敛 API 路由中的状态判断
 - [ ] 生产环境 PostgreSQL 迁移脚本
 - [ ] OpenMetadata 真实接入验证
 - [ ] Docker 部署配置

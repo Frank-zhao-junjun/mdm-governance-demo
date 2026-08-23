@@ -387,6 +387,21 @@ class TestApprovalAuthorization:
         response = client.post(f"/api/applications/{sample_application.id}/publish")
         assert response.status_code == 403
 
+    def test_publish_idempotency(self, admin_client, seeded_db, sample_application):
+        """Duplicate publish should fail after the first publish succeeds."""
+        from app import crud
+        crud.update_application(seeded_db, sample_application.id, {
+            "status": models.ApplicationStatus.APPROVED,
+            "material_code": "M01-0101-00002"
+        })
+
+        first_response = admin_client.post(f"/api/applications/{sample_application.id}/publish")
+        second_response = admin_client.post(f"/api/applications/{sample_application.id}/publish")
+
+        assert first_response.status_code == 200
+        assert second_response.status_code == 400
+        assert "已发布" in second_response.json()["detail"]
+
 
 class TestAuditEndpoints:
     """Test audit trace endpoints."""
@@ -447,6 +462,79 @@ class TestGoldenRecordEndpoints:
         assert data["id"] == gr.id
         assert data["material_code"] == "M01-0101-99999"
 
+    def test_revision_publish_and_rollback_flow(self, admin_client, seeded_db):
+        """A revision is approved/published and rollback creates a new version."""
+        from app import crud, schemas
+
+        record = crud.create_golden_record(
+            seeded_db,
+            schemas.GoldenRecordBase(
+                material_code="M01-0101-10001",
+                material_name="初始物料",
+                classification_id="cls-child-001",
+                material_type=models.MaterialType.RAW,
+            ),
+            "app-revision-001",
+            "user001",
+        )
+        revision = admin_client.post(
+            f"/api/golden-records/{record.id}/revisions",
+            json={"material_name": "修订物料", "change_reason": "规格升级"},
+        )
+        assert revision.status_code == 200
+        version_id = revision.json()["id"]
+        assert revision.json()["status"] == "pending_approval"
+
+        approved = admin_client.post(f"/api/golden-records/{record.id}/versions/{version_id}/approve")
+        published = admin_client.post(f"/api/golden-records/{record.id}/versions/{version_id}/publish")
+        assert approved.status_code == 200
+        assert published.status_code == 200
+        assert published.json()["version_number"] == 2
+
+        rolled_back = admin_client.post(
+            f"/api/golden-records/{record.id}/rollback",
+            params={"reason": "验证回滚"},
+        )
+        assert rolled_back.status_code == 200
+        assert rolled_back.json()["change_type"] == "rollback"
+        assert rolled_back.json()["version_number"] == 3
+
+        current = admin_client.get(f"/api/golden-records/{record.id}")
+        assert current.json()["material_name"] == "初始物料"
+        versions = admin_client.get(f"/api/golden-records/{record.id}/versions")
+        assert versions.status_code == 200
+        assert [item["version_number"] for item in versions.json()] == [1, 2, 3]
+
+    def test_invalidation_requires_approval_and_obsoletes_record(self, admin_client, seeded_db):
+        """Invalidation stays pending until approval, then obsoletes the record."""
+        from app import crud, schemas
+
+        record = crud.create_golden_record(
+            seeded_db,
+            schemas.GoldenRecordBase(
+                material_code="M01-0101-10002",
+                material_name="待失效物料",
+                classification_id="cls-child-001",
+                material_type=models.MaterialType.RAW,
+            ),
+            "app-invalidation-001",
+            "user001",
+        )
+        request = admin_client.post(
+            f"/api/golden-records/{record.id}/invalidation",
+            params={"reason": "物料淘汰"},
+        )
+        assert request.status_code == 200
+        version_id = request.json()["id"]
+        assert request.json()["status"] == "pending_approval"
+
+        approved = admin_client.post(
+            f"/api/golden-records/{record.id}/versions/{version_id}/invalidation-approve"
+        )
+        assert approved.status_code == 200
+        assert approved.json()["status"] == "invalidated"
+        assert admin_client.get(f"/api/golden-records/{record.id}").json()["status"] == "obsolete"
+
 
 class TestDashboardEndpoints:
     """Test dashboard and health endpoints."""
@@ -474,6 +562,35 @@ class TestDashboardEndpoints:
         assert response.status_code == 200
         data = response.json()
         assert "status" in data
+
+    def test_publish_sync_task_can_be_recovered_and_retried(self, admin_client, seeded_db, sample_application):
+        """A stale task is marked timeout and can be manually requeued."""
+        from datetime import datetime, timedelta, timezone
+        from app import crud
+
+        crud.update_application(seeded_db, sample_application.id, {
+            "status": models.ApplicationStatus.PUBLISHING
+        })
+        task = crud.create_publish_sync_task(
+            seeded_db, sample_application.id, "gr-001", "btp", "publish"
+        )
+        crud.update_publish_sync_task(seeded_db, task.id, {
+            "status": "running",
+            "started_at": datetime.now(timezone.utc) - timedelta(minutes=30),
+            "attempt_count": 1,
+        })
+
+        recovered = admin_client.post(
+            "/api/publish-sync-tasks/recover-timeouts",
+            params={"timeout_minutes": 15},
+        )
+        assert recovered.status_code == 200
+        assert recovered.json()["recovered_count"] == 1
+        assert recovered.json()["tasks"][0]["status"] == "timeout"
+
+        retried = admin_client.post(f"/api/publish-sync-tasks/{task.id}/retry")
+        assert retried.status_code == 200
+        assert retried.json()["status"] == "pending"
 
 
 class TestMetadataGovernanceEndpoints:

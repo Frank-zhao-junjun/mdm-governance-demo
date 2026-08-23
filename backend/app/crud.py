@@ -1,10 +1,10 @@
 """CRUD operations for all entities."""
 from typing import List, Optional
 from sqlalchemy.orm import Session
-from sqlalchemy import desc, text
+from sqlalchemy import desc, text, update
 
 from app import models, schemas
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 
 # ========== Classification ==========
@@ -110,6 +110,21 @@ def update_application(db: Session, app_id: str, data: dict) -> Optional[models.
     return db_item
 
 
+def claim_application_for_publish(db: Session, app_id: str) -> bool:
+    """Atomically reserve an approved application for one publish attempt."""
+    result = db.execute(
+        update(models.MaterialApplication)
+        .where(
+            models.MaterialApplication.id == app_id,
+            models.MaterialApplication.status == models.ApplicationStatus.APPROVED,
+            models.MaterialApplication.published_at.is_(None),
+        )
+        .values(status=models.ApplicationStatus.PUBLISHING)
+    )
+    db.commit()
+    return result.rowcount == 1
+
+
 # ========== Code Rule ==========
 
 def create_code_rule(db: Session, data: schemas.CodeRuleCreate) -> models.CodeRule:
@@ -143,7 +158,6 @@ def increment_seq(db: Session, rule_id: str) -> int:
     )
     row = result.fetchone()
     db.commit()
-
     return row[0] if row else 0
 
 
@@ -158,6 +172,22 @@ def create_golden_record(db: Session, data: schemas.GoldenRecordBase, applicatio
     db.add(db_item)
     db.commit()
     db.refresh(db_item)
+    db.add(models.GoldenRecordVersion(
+        golden_record_id=db_item.id,
+        version_number=1,
+        material_code=db_item.material_code,
+        material_name=db_item.material_name,
+        material_desc=db_item.material_desc,
+        classification_id=db_item.classification_id,
+        attribute_values=db_item.attribute_values,
+        material_type=db_item.material_type,
+        status=models.GoldenRecordVersionStatus.PUBLISHED,
+        change_type="initial",
+        change_reason="初始发布",
+        created_by=user_id,
+        published_at=datetime.now(timezone.utc),
+    ))
+    db.commit()
     return db_item
 
 
@@ -183,6 +213,197 @@ def update_golden_record(db: Session, gr_id: str, data: dict) -> Optional[models
     db.commit()
     db.refresh(db_item)
     return db_item
+
+
+def get_golden_record_versions(db: Session, gr_id: str) -> List[models.GoldenRecordVersion]:
+    return db.query(models.GoldenRecordVersion).filter(
+        models.GoldenRecordVersion.golden_record_id == gr_id
+    ).order_by(models.GoldenRecordVersion.version_number).all()
+
+
+def create_golden_record_revision(
+    db: Session,
+    gr_id: str,
+    data: schemas.GoldenRecordVersionCreate,
+    user_id: str,
+) -> Optional[models.GoldenRecordVersion]:
+    record = get_golden_record(db, gr_id)
+    if not record or record.status != models.GoldenRecordStatus.ACTIVE:
+        return None
+    parent = db.query(models.GoldenRecordVersion).filter(
+        models.GoldenRecordVersion.golden_record_id == gr_id,
+    ).order_by(models.GoldenRecordVersion.version_number.desc()).first()
+    if not parent:
+        return None
+
+    values = data.model_dump(exclude_none=True)
+    version = models.GoldenRecordVersion(
+        golden_record_id=gr_id,
+        parent_version_id=parent.id,
+        version_number=parent.version_number + 1,
+        material_code=parent.material_code,
+        material_name=values.get("material_name", parent.material_name),
+        material_desc=values.get("material_desc", parent.material_desc),
+        classification_id=values.get("classification_id", parent.classification_id),
+        attribute_values=values.get("attribute_values", parent.attribute_values),
+        material_type=values.get("material_type", parent.material_type),
+        status=models.GoldenRecordVersionStatus.PENDING_APPROVAL,
+        change_type="revision",
+        change_reason=data.change_reason,
+        created_by=user_id,
+    )
+    db.add(version)
+    db.commit()
+    db.refresh(version)
+    return version
+
+
+def approve_golden_record_version(
+    db: Session, version_id: str, user_id: str
+) -> Optional[models.GoldenRecordVersion]:
+    version = db.query(models.GoldenRecordVersion).filter(
+        models.GoldenRecordVersion.id == version_id,
+        models.GoldenRecordVersion.status == models.GoldenRecordVersionStatus.PENDING_APPROVAL,
+        models.GoldenRecordVersion.change_type == "revision",
+    ).first()
+    if not version:
+        return None
+    version.status = models.GoldenRecordVersionStatus.APPROVED
+    version.approved_by = user_id
+    version.approved_at = datetime.now(timezone.utc)
+    db.commit()
+    db.refresh(version)
+    return version
+
+
+def publish_golden_record_version(
+    db: Session, version_id: str, user_id: str
+) -> Optional[models.GoldenRecordVersion]:
+    version = db.query(models.GoldenRecordVersion).filter(
+        models.GoldenRecordVersion.id == version_id,
+        models.GoldenRecordVersion.status == models.GoldenRecordVersionStatus.APPROVED,
+        models.GoldenRecordVersion.change_type == "revision",
+    ).first()
+    if not version:
+        return None
+    record = get_golden_record(db, version.golden_record_id)
+    if not record or record.status != models.GoldenRecordStatus.ACTIVE:
+        return None
+    record.material_name = version.material_name
+    record.material_desc = version.material_desc
+    record.classification_id = version.classification_id
+    record.attribute_values = version.attribute_values
+    record.material_type = version.material_type
+    record.version = version.version_number
+    record.revision = version.version_number
+    record.updated_by = user_id
+    version.status = models.GoldenRecordVersionStatus.PUBLISHED
+    version.published_at = datetime.now(timezone.utc)
+    db.commit()
+    db.refresh(version)
+    return version
+
+
+def create_golden_record_invalidation(
+    db: Session, gr_id: str, reason: str, user_id: str
+) -> Optional[models.GoldenRecordVersion]:
+    record = get_golden_record(db, gr_id)
+    if not record or record.status != models.GoldenRecordStatus.ACTIVE:
+        return None
+    parent = db.query(models.GoldenRecordVersion).filter(
+        models.GoldenRecordVersion.golden_record_id == gr_id,
+    ).order_by(models.GoldenRecordVersion.version_number.desc()).first()
+    if not parent:
+        return None
+    version = models.GoldenRecordVersion(
+        golden_record_id=gr_id,
+        parent_version_id=parent.id,
+        version_number=parent.version_number + 1,
+        material_code=parent.material_code,
+        material_name=parent.material_name,
+        material_desc=parent.material_desc,
+        classification_id=parent.classification_id,
+        attribute_values=parent.attribute_values,
+        material_type=parent.material_type,
+        status=models.GoldenRecordVersionStatus.PENDING_APPROVAL,
+        change_type="invalidation",
+        change_reason=reason,
+        created_by=user_id,
+    )
+    db.add(version)
+    db.commit()
+    db.refresh(version)
+    return version
+
+
+def approve_golden_record_invalidation(
+    db: Session, version_id: str, user_id: str
+) -> Optional[models.GoldenRecordVersion]:
+    version = db.query(models.GoldenRecordVersion).filter(
+        models.GoldenRecordVersion.id == version_id,
+        models.GoldenRecordVersion.status == models.GoldenRecordVersionStatus.PENDING_APPROVAL,
+        models.GoldenRecordVersion.change_type == "invalidation",
+    ).first()
+    if not version:
+        return None
+    record = get_golden_record(db, version.golden_record_id)
+    if not record or record.status != models.GoldenRecordStatus.ACTIVE:
+        return None
+    record.status = models.GoldenRecordStatus.OBSOLETE
+    record.updated_by = user_id
+    version.status = models.GoldenRecordVersionStatus.INVALIDATED
+    version.approved_by = user_id
+    version.approved_at = datetime.now(timezone.utc)
+    version.published_at = version.approved_at
+    db.commit()
+    db.refresh(version)
+    return version
+
+
+def rollback_golden_record(
+    db: Session, gr_id: str, user_id: str, reason: str
+) -> Optional[models.GoldenRecordVersion]:
+    record = get_golden_record(db, gr_id)
+    if not record or record.status != models.GoldenRecordStatus.ACTIVE or record.version <= 1:
+        return None
+    target = db.query(models.GoldenRecordVersion).filter(
+        models.GoldenRecordVersion.golden_record_id == gr_id,
+        models.GoldenRecordVersion.version_number == record.version - 1,
+        models.GoldenRecordVersion.status == models.GoldenRecordVersionStatus.PUBLISHED,
+    ).first()
+    if not target:
+        return None
+    next_version = record.version + 1
+    rollback = models.GoldenRecordVersion(
+        golden_record_id=gr_id,
+        parent_version_id=target.id,
+        version_number=next_version,
+        material_code=target.material_code,
+        material_name=target.material_name,
+        material_desc=target.material_desc,
+        classification_id=target.classification_id,
+        attribute_values=target.attribute_values,
+        material_type=target.material_type,
+        status=models.GoldenRecordVersionStatus.ROLLED_BACK,
+        change_type="rollback",
+        change_reason=reason,
+        created_by=user_id,
+        approved_by=user_id,
+        approved_at=datetime.now(timezone.utc),
+        published_at=datetime.now(timezone.utc),
+    )
+    record.material_name = target.material_name
+    record.material_desc = target.material_desc
+    record.classification_id = target.classification_id
+    record.attribute_values = target.attribute_values
+    record.material_type = target.material_type
+    record.version = next_version
+    record.revision = next_version
+    record.updated_by = user_id
+    db.add(rollback)
+    db.commit()
+    db.refresh(rollback)
+    return rollback
 
 
 # ========== Audit Log ==========
@@ -216,6 +437,73 @@ def create_external_log(db: Session, **kwargs) -> models.ExternalSystemLog:
     db.commit()
     db.refresh(db_item)
     return db_item
+
+
+def create_publish_sync_task(
+    db: Session, application_id: str, golden_record_id: str, system_name: str, operation: str
+) -> models.PublishSyncTask:
+    task = models.PublishSyncTask(
+        application_id=application_id,
+        golden_record_id=golden_record_id,
+        system_name=system_name,
+        operation=operation,
+        status="pending",
+    )
+    db.add(task)
+    db.commit()
+    db.refresh(task)
+    return task
+
+
+def get_publish_sync_tasks(db: Session, application_id: Optional[str] = None) -> List[models.PublishSyncTask]:
+    query = db.query(models.PublishSyncTask)
+    if application_id:
+        query = query.filter(models.PublishSyncTask.application_id == application_id)
+    return query.order_by(desc(models.PublishSyncTask.created_at)).all()
+
+
+def update_publish_sync_task(db: Session, task_id: str, data: dict) -> Optional[models.PublishSyncTask]:
+    task = db.query(models.PublishSyncTask).filter(models.PublishSyncTask.id == task_id).first()
+    if not task:
+        return None
+    for key, value in data.items():
+        setattr(task, key, value)
+    task.updated_at = datetime.now(timezone.utc)
+    db.commit()
+    db.refresh(task)
+    return task
+
+
+def retry_publish_sync_task(db: Session, task_id: str) -> Optional[models.PublishSyncTask]:
+    task = db.query(models.PublishSyncTask).filter(
+        models.PublishSyncTask.id == task_id,
+        models.PublishSyncTask.status.in_(("failed", "timeout")),
+    ).first()
+    if not task or task.attempt_count >= task.max_attempts:
+        return None
+    task.status = "pending"
+    task.next_retry_at = datetime.now(timezone.utc)
+    task.last_error = None
+    task.updated_at = datetime.now(timezone.utc)
+    db.commit()
+    db.refresh(task)
+    return task
+
+
+def recover_timed_out_publish_tasks(db: Session, timeout_minutes: int = 15) -> List[models.PublishSyncTask]:
+    cutoff = datetime.now(timezone.utc) - timedelta(minutes=timeout_minutes)
+    tasks = db.query(models.PublishSyncTask).filter(
+        models.PublishSyncTask.status == "running",
+        models.PublishSyncTask.started_at < cutoff,
+    ).all()
+    now = datetime.now(timezone.utc)
+    for task in tasks:
+        task.status = "timeout"
+        task.last_error = f"任务超过 {timeout_minutes} 分钟未完成"
+        task.next_retry_at = now
+        task.updated_at = now
+    db.commit()
+    return tasks
 
 
 # ========== Dashboard Stats ==========

@@ -21,6 +21,7 @@ class ApplicationStatus(str, Enum):
     PENDING_ADMIN = "pending_admin"
     PENDING_DEPT = "pending_dept"
     APPROVED = "approved"
+    PUBLISHING = "publishing"
     REJECTED = "rejected"
     PUBLISHED = "published"
 
@@ -200,6 +201,59 @@ class GoldenRecordResponse(GoldenRecordBase):
     created_at: datetime
     updated_at: datetime
     
+    model_config = ConfigDict(from_attributes=True)
+
+
+class GoldenRecordVersionCreate(BaseModel):
+    material_name: Optional[str] = Field(None, max_length=200)
+    material_desc: Optional[str] = None
+    classification_id: Optional[str] = None
+    attribute_values: Optional[Dict[str, Any]] = None
+    material_type: Optional[MaterialType] = None
+    change_reason: str = Field(..., min_length=1, max_length=1000)
+
+
+class GoldenRecordVersionResponse(BaseModel):
+    id: str
+    golden_record_id: str
+    parent_version_id: Optional[str] = None
+    version_number: int
+    material_code: str
+    material_name: str
+    material_desc: Optional[str] = None
+    classification_id: str
+    attribute_values: Optional[Dict[str, Any]] = None
+    material_type: MaterialType
+    status: str
+    change_type: str
+    change_reason: Optional[str] = None
+    created_by: str
+    approved_by: Optional[str] = None
+    created_at: datetime
+    approved_at: Optional[datetime] = None
+    published_at: Optional[datetime] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class PublishSyncTaskResponse(BaseModel):
+    id: str
+    application_id: str
+    golden_record_id: str
+    system_name: str
+    operation: str
+    status: str
+    attempt_count: int
+    max_attempts: int
+    next_retry_at: Optional[datetime] = None
+    started_at: Optional[datetime] = None
+    completed_at: Optional[datetime] = None
+    last_error: Optional[str] = None
+    request_payload: Optional[Dict[str, Any]] = None
+    response_payload: Optional[Dict[str, Any]] = None
+    created_at: datetime
+    updated_at: datetime
+
     model_config = ConfigDict(from_attributes=True)
 
 
