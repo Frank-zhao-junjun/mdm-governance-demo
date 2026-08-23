@@ -305,6 +305,66 @@
             </div>
 
             <div class="section">
+                <h2>🔗 什么是 BTP/CPI？（外部系统集成）</h2>
+                <p>在制造业中，物料主数据需要在多个系统间同步。本系统通过 <strong>SAP BTP</strong> 实现与 ERP、采购等系统的集成。</p>
+                
+                <h3>📦 SAP BTP（业务技术平台）</h3>
+                <p><strong>SAP Business Technology Platform</strong> 是 SAP 提供的云端业务平台，用于连接和集成各种业务系统。</p>
+                <div class="diagram" style="background: #e3f2fd;">
+                    <h3 style="color: #1976d2;">BTP 平台能力</h3>
+                    <div style="text-align: left; max-width: 600px; margin: 0 auto;">
+                        <p>✅ <strong>Integration Suite（集成套件）</strong>：系统间数据同步</p>
+                        <p>✅ <strong>API Management</strong>：统一 API 管理</p>
+                        <p>✅ <strong>Event Mesh</strong>：实时事件驱动</p>
+                        <p>✅ <strong>Cloud Connector</strong>：安全连接本地系统</p>
+                        <p>✅ <strong>AI 服务</strong>：智能数据处理</p>
+                    </div>
+                </div>
+
+                <h3>🔄 CPI（云集成）</h3>
+                <p><strong>Cloud Platform Integration</strong> 是 BTP 的核心组件，负责系统间的数据同步和转换。</p>
+                <div class="diagram" style="background: #fff3e0;">
+                    <h3 style="color: #f57c00;">CPI 在 MDM 中的作用</h3>
+                    <div class="flow">
+                        <div class="flow-item" style="background: #667eea; color: white; border-color: #667eea;">
+                            金标数据<br/>
+                            <small>MDM 系统</small>
+                        </div>
+                        <div class="flow-arrow">→</div>
+                        <div class="flow-item" style="background: #ff9800; color: white; border-color: #ff9800;">
+                            CPI 集成流<br/>
+                            <small>数据转换 + 同步</small>
+                        </div>
+                        <div class="flow-arrow">→</div>
+                        <div class="flow-item" style="background: #4caf50; color: white; border-color: #4caf50;">
+                            ERP/MES<br/>
+                            <small>业务系统</small>
+                        </div>
+                    </div>
+                    <p style="margin-top: 20px; font-size: 0.9em; color: #666;">
+                        <strong>示例</strong>：物料主数据发布后，CPI 自动同步到 S/4HANA（ERP）、Ariba（采购）、MES（生产）等系统
+                    </p>
+                </div>
+
+                <h3>🎯 为什么需要 BTP/CPI？</h3>
+                <ul>
+                    <li><strong>数据一致性</strong>：确保所有系统使用相同的物料主数据</li>
+                    <li><strong>自动化同步</strong>：避免人工重复录入，减少错误</li>
+                    <li><strong>实时性</strong>：物料变更实时通知所有相关系统</li>
+                    <li><strong>可追溯</strong>：记录数据同步历史，便于审计</li>
+                </ul>
+
+                <h3>💡 本项目中的实现</h3>
+                <p>当前项目使用 <strong>Mock 实现</strong>模拟 BTP/CPI 集成，演示数据同步流程：</p>
+                <ul>
+                    <li>发布金标数据时，模拟调用 BTP API</li>
+                    <li>返回同步 ID（如 <code>BTP-20260713-1234</code>）和目标系统列表</li>
+                    <li>支持同步失败重试和补偿</li>
+                </ul>
+                <p><strong>生产环境</strong>中，需要配置真实的 SAP BTP 租户和 CPI 集成流。</p>
+            </div>
+
+            <div class="section">
                 <h2>🔐 安全特性</h2>
                 <ul>
                     <li><strong>JWT 认证</strong>：所有 API 必须携带有效 JWT，无免认证回退</li>
