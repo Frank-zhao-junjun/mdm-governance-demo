@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>制造业数据治理平台 - 项目原理</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 60px 40px;
+            text-align: center;
+        }
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+        .content {
+            padding: 40px;
+        }
+        .section {
+            margin-bottom: 50px;
+        }
+        .section h2 {
+            color: #667eea;
+            font-size: 1.8em;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 3px solid #667eea;
+        }
+        .section h3 {
+            color: #764ba2;
+            font-size: 1.3em;
+            margin: 25px 0 15px 0;
+        }
+        .section p {
+            margin-bottom: 15px;
+            font-size: 1.05em;
+        }
+        .diagram {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 30px;
+            margin: 20px 0;
+            text-align: center;
+        }
+        .flow {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin: 20px 0;
+        }
+        .flow-item {
+            background: white;
+            border: 2px solid #667eea;
+            border-radius: 8px;
+            padding: 15px 20px;
+            font-weight: 600;
+            color: #667eea;
+            min-width: 120px;
+            text-align: center;
+        }
+        .flow-arrow {
+            font-size: 1.5em;
+            color: #764ba2;
+        }
+        .highlight {
+            background: linear-gradient(120deg, #ffeaa7 0%, #ffeaa7 100%);
+            background-repeat: no-repeat;
+            background-size: 100% 40%;
+            background-position: 0 90%;
+            padding: 0 4px;
+            font-weight: 600;
+        }
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+        .feature-card {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 25px;
+            border-left: 4px solid #667eea;
+        }
+        .feature-card h4 {
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 1.2em;
+        }
+        .feature-card p {
+            color: #666;
+            font-size: 0.95em;
+        }
+        .tech-stack {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .tech-badge {
+            background: #667eea;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            font-weight: 600;
+        }
+        .footer {
+            background: #f8f9fa;
+            padding: 30px 40px;
+            text-align: center;
+            color: #666;
+            border-top: 1px solid #e0e0e0;
+        }
+        .back-link {
+            display: inline-block;
+            margin-top: 20px;
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 600;
+            padding: 10px 20px;
+            border: 2px solid #667eea;
+            border-radius: 8px;
+            transition: all 0.3s;
+        }
+        .back-link:hover {
+            background: #667eea;
+            color: white;
+        }
+        ul {
+            margin-left: 20px;
+            margin-bottom: 15px;
+        }
+        li {
+            margin-bottom: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏭 制造业数据治理平台</h1>
+            <p>物料主数据全生命周期管理系统</p>
+        </div>
+
+        <div class="content">
+            <div class="section">
+                <h2>📋 项目概述</h2>
+                <p>
+                    本平台是一个面向制造业的<span class="highlight">物料主数据治理系统（MDM）</span>，
+                    实现了从物料申请、校验、去重、编码、审批到发布的<span class="highlight">端到端治理闭环</span>。
+                </p>
+                <p>
+                    核心目标是建立以 <span class="highlight">Golden Record（金标数据）</span> 为权威数据源，
+                    以业务规则和审批为保障，以 ERP/BTP 为执行出口的主数据治理体系。
+                </p>
+            </div>
+
+            <div class="section">
+                <h2>🔄 核心流程</h2>
+                <div class="diagram">
+                    <h3>物料主数据治理流程</h3>
+                    <div class="flow">
+                        <div class="flow-item">新建申请</div>
+                        <div class="flow-arrow">→</div>
+                        <div class="flow-item">保存草稿</div>
+                        <div class="flow-arrow">→</div>
+                        <div class="flow-item">提交</div>
+                        <div class="flow-arrow">→</div>
+                        <div class="flow-item">质量校验</div>
+                        <div class="flow-arrow">→</div>
+                        <div class="flow-item">重复预检</div>
+                        <div class="flow-arrow">→</div>
+                        <div class="flow-item">编码生成</div>
+                    </div>
+                    <div class="flow">
+                        <div class="flow-item">管理员审批</div>
+                        <div class="flow-arrow">←</div>
+                        <div class="flow-item">部门审批</div>
+                        <div class="flow-arrow">←</div>
+                        <div class="flow-item">待审批</div>
+                        <div class="flow-arrow">←</div>
+                        <div class="flow-item" style="background: #667eea; color: white;">编码生成</div>
+                    </div>
+                    <div class="flow">
+                        <div class="flow-item">已批准</div>
+                        <div class="flow-arrow">→</div>
+                        <div class="flow-item">发布</div>
+                        <div class="flow-arrow">→</div>
+                        <div class="flow-item" style="background: #28a745; color: white; border-color: #28a745;">创建 Golden Record</div>
+                        <div class="flow-arrow">→</div>
+                        <div class="flow-item">BTP 发布</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section">
+                <h2>🎯 核心功能</h2>
+                <div class="feature-grid">
+                    <div class="feature-card">
+                        <h4>📝 物料申请管理</h4>
+                        <p>支持物料申请的创建、编辑、保存草稿、提交，包含附件上传（图纸、规格书等）</p>
+                    </div>
+                    <div class="feature-card">
+                        <h4>✅ 数据质量校验</h4>
+                        <p>自动校验必填字段、名称长度、分类有效性、属性模板，确保数据质量</p>
+                    </div>
+                    <div class="feature-card">
+                        <h4>🔍 重复物料识别</h4>
+                        <p>基于 ILIKE + 前缀模糊匹配算法，自动检测重复物料，避免数据冗余</p>
+                    </div>
+                    <div class="feature-card">
+                        <h4>🔢 智能编码生成</h4>
+                        <p>基于编码规则自动生成物料编码，使用 UPDATE...RETURNING 保证并发安全</p>
+                    </div>
+                    <div class="feature-card">
+                        <h4>👥 多级审批流程</h4>
+                        <p>支持管理员审批、部门审批两级审批，严格的权限控制和状态机管理</p>
+                    </div>
+                    <div class="feature-card">
+                        <h4>💎 Golden Record</h4>
+                        <p>权威主数据记录，支持版本管理、修订、失效、回滚，确保数据一致性</p>
+                    </div>
+                    <div class="feature-card">
+                        <h4>📊 分类与模板</h4>
+                        <p>三级物料分类树（大类→中类→小类），支持属性模板自定义</p>
+                    </div>
+                    <div class="feature-card">
+                        <h4>🔗 外部系统集成</h4>
+                        <p>支持 BTP/ERP 发布、OpenMetadata 元数据同步，实现数据流转</p>
+                    </div>
+                    <div class="feature-card">
+                        <h4>📜 审计追踪</h4>
+                        <p>全生命周期操作日志，记录每个步骤的执行者、时间、状态和详情</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section">
+                <h2>🏗️ 系统架构</h2>
+                <div class="diagram">
+                    <h3>技术架构</h3>
+                    <div class="flow">
+                        <div class="flow-item" style="background: #61dafb; color: #282c34; border-color: #61dafb;">
+                            React 19<br/>
+                            <small>前端 SPA</small>
+                        </div>
+                        <div class="flow-arrow">↕</div>
+                        <div class="flow-item" style="background: #009688; color: white; border-color: #009688;">
+                            FastAPI<br/>
+                            <small>后端 API</small>
+                        </div>
+                        <div class="flow-arrow">↕</div>
+                        <div class="flow-item" style="background: #336791; color: white; border-color: #336791;">
+                            PostgreSQL<br/>
+                            <small>数据库</small>
+                        </div>
+                    </div>
+                </div>
+
+                <h3>技术栈</h3>
+                <div class="tech-stack">
+                    <span class="tech-badge">React 19</span>
+                    <span class="tech-badge">TypeScript</span>
+                    <span class="tech-badge">Vite 7</span>
+                    <span class="tech-badge">Tailwind CSS</span>
+                    <span class="tech-badge">shadcn/ui</span>
+                    <span class="tech-badge">Python 3.12</span>
+                    <span class="tech-badge">FastAPI</span>
+                    <span class="tech-badge">SQLAlchemy 2.0</span>
+                    <span class="tech-badge">Pydantic v2</span>
+                    <span class="tech-badge">JWT</span>
+                    <span class="tech-badge">PostgreSQL</span>
+                </div>
+            </div>
+
+            <div class="section">
+                <h2>🔐 安全特性</h2>
+                <ul>
+                    <li><strong>JWT 认证</strong>：所有 API 必须携带有效 JWT，无免认证回退</li>
+                    <li><strong>密钥管理</strong>：生产环境强制 MDM_SECRET_KEY 环境变量，缺失即 fail-fast</li>
+                    <li><strong>附件安全</strong>：类型黑名单（HTML/SVG/JS）+ 10MB 流式大小限制</li>
+                    <li><strong>下载防护</strong>：强制 application/octet-stream + Content-Disposition: attachment，防存储型 XSS</li>
+                    <li><strong>并发安全</strong>：编码生成使用单语句 UPDATE...RETURNING，消除竞态</li>
+                    <li><strong>越权控制</strong>：严格的角色权限校验，普通用户无法执行审批/发布操作</li>
+                </ul>
+            </div>
+
+            <div class="section">
+                <h2>📈 数据治理体系</h2>
+                <div class="diagram">
+                    <h3>MDM 治理体系</h3>
+                    <div style="text-align: left; max-width: 600px; margin: 0 auto;">
+                        <p><strong>业务主数据治理域（RalphLoop MDM）</strong></p>
+                        <p>申请 → 校验 → 去重 → 编码 → 审批 → Golden Record → ERP/BTP 生效</p>
+                        <p style="margin-top: 20px;"><strong>元数据同步适配层</strong></p>
+                        <p>↓</p>
+                        <p style="margin-top: 20px;"><strong>元数据上下文平台（OpenMetadata）</strong></p>
+                        <p>目录、术语、血缘、质量观测、数据上下文</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section">
+                <h2>🚀 项目亮点</h2>
+                <ul>
+                    <li><strong>完整的业务闭环</strong>：从申请到发布的全流程覆盖</li>
+                    <li><strong>严格的审批控制</strong>：多级审批 + 越权防护 + 状态机管理</li>
+                    <li><strong>版本化管理</strong>：Golden Record 支持修订、失效、回滚</li>
+                    <li><strong>高并发安全</strong>：编码生成原子性保证，157+ 测试覆盖</li>
+                    <li><strong>可扩展架构</strong>：模块化设计，支持外部系统集成</li>
+                    <li><strong>生产级安全</strong>：JWT 认证、附件防护、密钥管理</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p><strong>制造业数据治理平台</strong> v1.0.0</p>
+            <p>物料主数据全生命周期管理解决方案</p>
+            <a href="/" class="back-link">← 返回首页</a>
+        </div>
+    </div>
+</body>
+</html>
