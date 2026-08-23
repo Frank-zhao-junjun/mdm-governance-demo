@@ -186,12 +186,10 @@ class TestApplicationEndpoints:
         assert response.status_code == 400
 
     def test_submit_without_auth(self, client, seeded_db, sample_application):
-        """TC-API-027: Submit without auth header should use fallback (dev mode)."""
-        # Remove auth header to test dev fallback
+        """TC-API-027: Submit without auth header must be rejected with 401."""
         client.headers.pop("Authorization", None)
         response = client.post(f"/api/applications/{sample_application.id}/submit")
-        # In dev mode, falls back to mock user
-        assert response.status_code in [200, 401]
+        assert response.status_code == 401
 
     def test_pagination_params_validation(self, client):
         """TC-API-028: Invalid pagination params should return 400."""
@@ -223,6 +221,27 @@ class TestApplicationEndpoints:
         response = client.get(attachment["download_url"])
         assert response.status_code == 200
         assert response.content == b"drawing-content"
+        # Downloads must force attachment + octet-stream to prevent inline script execution
+        assert response.headers["content-type"].startswith("application/octet-stream")
+        assert "attachment" in response.headers["content-disposition"]
+
+    def test_upload_html_attachment_rejected(self, client, sample_application):
+        """TC-API-029b: HTML upload must be rejected (stored-XSS prevention)."""
+        response = client.post(
+            f"/api/applications/{sample_application.id}/attachments",
+            files={"file": ("evil.html", b"<script>alert(1)</script>", "text/html")}
+        )
+        assert response.status_code == 400
+
+    def test_upload_oversize_attachment_rejected(self, client, sample_application, monkeypatch):
+        """TC-API-029c: Attachment larger than limit must be rejected and cleaned up."""
+        from app.api import applications as applications_api
+        monkeypatch.setattr(applications_api, "MAX_ATTACHMENT_SIZE", 16)
+        response = client.post(
+            f"/api/applications/{sample_application.id}/attachments",
+            files={"file": ("big.bin", b"x" * 64, "application/octet-stream")}
+        )
+        assert response.status_code == 400
 
 
 class TestApprovalEndpoints:

@@ -24,4 +24,7 @@ class Settings:
     ENV: str = os.getenv("ENV", "development")
     DEBUG: bool = ENV == "development"
 
+    # JWT signing key — required in production, optional in development
+    SECRET_KEY: str = os.getenv("MDM_SECRET_KEY", "")
+
 settings = Settings()

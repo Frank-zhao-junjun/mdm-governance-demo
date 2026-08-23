@@ -2,7 +2,6 @@
 from pathlib import Path
 from typing import List, Optional
 from datetime import datetime, timezone
-import shutil
 import uuid
 
 from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
@@ -24,6 +23,19 @@ from app.services.openmetadata_sync import OpenMetadataSync
 
 router = APIRouter(prefix="/api/applications", tags=["Applications"])
 UPLOAD_ROOT = Path(__file__).resolve().parents[2] / "uploads" / "applications"
+
+# 单附件大小上限
+MAX_ATTACHMENT_SIZE = 10 * 1024 * 1024  # 10MB
+
+# 浏览器内联打开时可执行脚本的类型，一律拒绝（双保险；下载端已强制 attachment）
+BLOCKED_CONTENT_TYPES = {
+    "text/html",
+    "application/xhtml+xml",
+    "image/svg+xml",
+    "text/javascript",
+    "application/javascript",
+    "application/x-javascript",
+}
 
 
 def _safe_filename(filename: str) -> str:
@@ -87,6 +99,10 @@ def upload_application_attachment(
     if app.status != models.ApplicationStatus.DRAFT:
         raise HTTPException(status_code=400, detail="只有草稿状态可以上传附件")
 
+    content_type = (file.content_type or "application/octet-stream").split(";")[0].strip().lower()
+    if content_type in BLOCKED_CONTENT_TYPES:
+        raise HTTPException(status_code=400, detail="不支持的文件类型")
+
     attachment_id = str(uuid.uuid4())
     original_name = _safe_filename(file.filename or "attachment")
     stored_name = f"{attachment_id}-{original_name}"
@@ -94,15 +110,24 @@ def upload_application_attachment(
     app_dir.mkdir(parents=True, exist_ok=True)
     file_path = app_dir / stored_name
 
-    with file_path.open("wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
+    # 流式写入并校验大小，超限则清理半成品文件
+    size = 0
+    try:
+        with file_path.open("wb") as buffer:
+            while chunk := file.file.read(1024 * 1024):
+                size += len(chunk)
+                if size > MAX_ATTACHMENT_SIZE:
+                    raise HTTPException(status_code=400, detail="附件大小超过 10MB 限制")
+                buffer.write(chunk)
+    except HTTPException:
+        file_path.unlink(missing_ok=True)
+        raise
 
-    size = file_path.stat().st_size
     attachment = {
         "id": attachment_id,
         "original_name": original_name,
         "stored_name": stored_name,
-        "content_type": file.content_type or "application/octet-stream",
+        "content_type": content_type,
         "size": size,
         "uploaded_by": user["id"],
         "uploaded_by_name": user.get("name"),
@@ -150,9 +175,10 @@ def download_application_attachment(
     if not file_path.exists():
         raise HTTPException(status_code=404, detail="附件文件不存在")
 
+    # 强制以 octet-stream + attachment 下载，杜绝浏览器内联执行（存储型 XSS 防护）
     return FileResponse(
         file_path,
-        media_type=attachment.get("content_type") or "application/octet-stream",
+        media_type="application/octet-stream",
         filename=attachment.get("original_name") or "attachment"
     )
 

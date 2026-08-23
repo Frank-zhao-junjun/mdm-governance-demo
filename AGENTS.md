@@ -113,8 +113,9 @@ python3 -m uvicorn app.main:app --reload --port 8000
 
 ### 部署 (Coze 平台)
 - 部署架构：FastAPI (uvicorn port 5000) 同时服务 API 和 SPA 静态文件 (dist/)
-- 部署脚本：`scripts/coze-deploy-build.sh`（pnpm build + pip install + init_db）→ `scripts/coze-deploy-run.sh`（uvicorn:5000）
+- 部署脚本：`scripts/coze-deploy-build.sh`（pnpm build + pip install + init_db）→ `scripts/coze-deploy-run.sh`（uvicorn:5000，**ENV=production**）
 - 后端 `main.py` 内置 SPA fallback：当 `dist/` 存在时，非 API 路由返回 `dist/index.html`
+- JWT 密钥：生产模式必须提供 `MDM_SECRET_KEY`（未设置时启动 fail-fast）；deploy-run.sh 会优先生成并持久化到 `backend/.mdm_secret_key`（600 权限，已 gitignore）
 
 ### 登录凭据
 - 管理员：`admin001` / `adminpass001`
@@ -126,6 +127,9 @@ python3 -m uvicorn app.main:app --reload --port 8000
 - 后端 Python 环境必须使用 uv 管理
 - 预览端口固定为 5000，禁止使用 9000 端口
 - 数据库默认使用 SQLite (开发环境)，生产环境使用 PostgreSQL
+- **认证安全**：所有 API 必须携带有效 JWT（无免认证回退）；`get_current_user` 不允许任何无 token 放行
+- **附件安全**：上传拒绝 HTML/SVG/JS 等可执行类型，单文件 ≤ 10MB；下载一律 `application/octet-stream` + `Content-Disposition: attachment`
+- **编码生成**：`crud.increment_seq` 使用单语句 `UPDATE...RETURNING` 保证原子性，禁止拆成 UPDATE + 独立 SELECT（会产生重复编码）
 
 ## 常见问题和预防
 
@@ -137,3 +141,5 @@ python3 -m uvicorn app.main:app --reload --port 8000
 - OpenMetadata 和 BTP 集成默认关闭 (`.env.example` 中 `OM_ENABLED=false`)
 - 预览环境使用系统 Python 而非 venv（uv venv + pip install 在沙箱中下载超时），生产环境应使用 venv
 - 后端 config.py 中 `OM_ENABLED` 和 `BTP_ENABLED` 默认为 `true`，预览/部署脚本中显式设为 `false`
+- **2026-07 安全修复**：生产部署曾用 `ENV=development` 导致免认证回退生效 + JWT 密钥硬编码可伪造，已修复（ENV=production、删除回退、MDM_SECRET_KEY 独立环境变量）；`auth.py` 中的用户库仍是 MOCK_USERS 硬编码，中期应迁入数据库
+- 前端有 17 个预存 eslint 错误（`any` 类型、effect 中 setState 等），未纳入 CI，修复后可把 `pnpm lint` 加入 CI

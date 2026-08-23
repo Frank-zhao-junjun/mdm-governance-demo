@@ -133,22 +133,17 @@ def get_code_rule(db: Session, rule_id: str) -> Optional[models.CodeRule]:
 
 def increment_seq(db: Session, rule_id: str) -> int:
     """Atomically increment and return the sequence number.
-    
-    Uses database-level UPDATE to avoid race conditions in concurrent requests.
+
+    Single-statement UPDATE...RETURNING: the increment and the read happen in one
+    atomic step, so concurrent callers can never observe the same value.
     """
-    # Atomic increment using raw SQL
-    db.execute(
-        text("UPDATE code_rules SET current_seq = current_seq + 1 WHERE id = :id"),
-        {"id": rule_id}
-    )
-    db.commit()
-    
-    # Fetch the updated value
     result = db.execute(
-        text("SELECT current_seq FROM code_rules WHERE id = :id"),
+        text("UPDATE code_rules SET current_seq = current_seq + 1 WHERE id = :id RETURNING current_seq"),
         {"id": rule_id}
     )
     row = result.fetchone()
+    db.commit()
+
     return row[0] if row else 0
 
 
