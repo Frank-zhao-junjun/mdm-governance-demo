@@ -437,6 +437,34 @@
                     <li>支持同步失败重试和补偿</li>
                 </ul>
                 <p><strong>生产环境</strong>中，需要配置真实的 SAP BTP 租户和 CPI 集成流。</p>
+
+                <h3>🔧 没有 BTP 怎么办？</h3>
+                <p><strong>BTP 不是必需的</strong>，它只是 SAP 生态中的一种集成方案。RalphLoop MDM 可以对接任何系统，集成方式取决于你的技术栈：</p>
+                <div class="diagram" style="background: #f3e5f5;">
+                    <h3 style="color: #7b1fa2;">多种集成方式</h3>
+                    <div style="text-align: left; max-width: 700px; margin: 0 auto;">
+                        <p><strong>✅ 方式 1：直接 API 调用</strong></p>
+                        <p style="margin-left: 20px; color: #666;">目标系统提供 REST/SOAP API → MDM 直接调用 → 数据同步</p>
+                        <p style="margin-left: 20px; color: #666;">适用：现代系统（S/4HANA Cloud、Salesforce、自建系统）</p>
+                        
+                        <p style="margin-top: 15px;"><strong>✅ 方式 2：消息队列</strong></p>
+                        <p style="margin-left: 20px; color: #666;">MDM 发布消息 → Kafka/RabbitMQ → 目标系统订阅消费</p>
+                        <p style="margin-left: 20px; color: #666;">适用：高并发、异步场景、微服务架构</p>
+                        
+                        <p style="margin-top: 15px;"><strong>✅ 方式 3：数据库直连</strong></p>
+                        <p style="margin-left: 20px; color: #666;">MDM 写入中间表 → 目标系统读取中间表</p>
+                        <p style="margin-left: 20px; color: #666;">适用：老系统、无 API 的遗留系统</p>
+                        
+                        <p style="margin-top: 15px;"><strong>✅ 方式 4：ETL 工具</strong></p>
+                        <p style="margin-left: 20px; color: #666;">MDM 数据 → Informatica/Talend/DataX → 目标系统</p>
+                        <p style="margin-left: 20px; color: #666;">适用：批量同步、数据仓库场景</p>
+                        
+                        <p style="margin-top: 15px;"><strong>✅ 方式 5：SAP BTP/CPI（推荐）</strong></p>
+                        <p style="margin-left: 20px; color: #666;">MDM → BTP CPI → SAP 系统（S/4HANA、Ariba 等）</p>
+                        <p style="margin-left: 20px; color: #666;">适用：SAP 生态、需要统一集成平台</p>
+                    </div>
+                </div>
+                <p style="margin-top: 20px;"><strong>总结</strong>：RalphLoop MDM 是<strong>通用的主数据管理平台</strong>，不绑定特定集成技术。BTP/CPI 只是 SAP 场景下的推荐方案，你也可以根据企业实际情况选择其他集成方式。</p>
             </div>
 
             <div class="section">
