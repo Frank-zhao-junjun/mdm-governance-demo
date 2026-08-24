@@ -24,6 +24,9 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      - name: ESLint
+        run: pnpm lint
+
       - name: TypeScript type check
         run: npx tsc --noEmit
 
@@ -49,7 +52,7 @@ jobs:
         working-directory: backend
         run: python -m pytest tests/ -q
         env:
-          SQLALCHEMY_DATABASE_URL: sqlite:///:memory:
+          SQLALCHEMY_DATABASE_URL: "sqlite:///:memory:"
           OM_ENABLED: "false"
           BTP_ENABLED: "false"
           ENV: test

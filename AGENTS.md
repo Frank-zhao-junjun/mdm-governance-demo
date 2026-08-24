@@ -142,4 +142,4 @@ python3 -m uvicorn app.main:app --reload --port 8000
 - 预览环境使用系统 Python 而非 venv（uv venv + pip install 在沙箱中下载超时），生产环境应使用 venv
 - 后端 config.py 中 `OM_ENABLED` 和 `BTP_ENABLED` 默认为 `true`，预览/部署脚本中显式设为 `false`
 - **2026-07 安全修复**：生产部署曾用 `ENV=development` 导致免认证回退生效 + JWT 密钥硬编码可伪造，已修复（ENV=production、删除回退、MDM_SECRET_KEY 独立环境变量）；`auth.py` 中的用户库仍是 MOCK_USERS 硬编码，中期应迁入数据库
-- 前端有 17 个预存 eslint 错误（`any` 类型、effect 中 setState 等），未纳入 CI，修复后可把 `pnpm lint` 加入 CI
+- 前端 17 个预存 eslint 错误已修复（2026-08），`pnpm lint` 已加入 CI；shadcn/ui 目录关闭了 `react-refresh/only-export-components`（variants 同文件导出是 shadcn 既定模式），carousel/sidebar 两处上游写法使用行内豁免

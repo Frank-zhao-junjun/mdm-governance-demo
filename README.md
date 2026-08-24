@@ -185,7 +185,7 @@ GitHub Actions 工作流（`.github/workflows/ci.yml`）包含两个 job：
 
 | Job | 内容 |
 |-----|------|
-| `frontend-check` | `tsc --noEmit` + `pnpm build` |
+| `frontend-check` | `pnpm lint` (eslint) + `tsc --noEmit` + `pnpm build` |
 | `backend-tests` | Python 3.12 + `pytest`（`ENV=test`，SQLite in-memory） |
 
 ---
@@ -293,4 +293,4 @@ FastAPI/uvicorn (:5000)  ── 同时服务 API + SPA 静态文件 (dist/)
 - [ ] 生产环境 PostgreSQL 迁移脚本
 - [ ] OpenMetadata 真实接入验证
 - [ ] Docker 部署配置
-- [ ] 前端 17 个预存 eslint 错误修复后可将 `pnpm lint` 加入 CI
+- [x] ~~前端 17 个预存 eslint 错误~~ 已修复，`pnpm lint` 已加入 CI
