@@ -11,6 +11,7 @@ import GoldenRecords from './pages/GoldenRecords';
 import Classifications from './pages/Classifications';
 import AuditTrace from './pages/AuditTrace';
 import MetadataGovernance from './pages/MetadataGovernance';
+import GovernanceRules from './pages/GovernanceRules';
 
 const App: React.FC = () => {
   return (
@@ -26,6 +27,7 @@ const App: React.FC = () => {
           <Route path="/applications/:id" element={<ApplicationDetail />} />
           <Route path="/golden-records" element={<GoldenRecords />} />
           <Route path="/metadata-governance" element={<MetadataGovernance />} />
+          <Route path="/governance-rules" element={<GovernanceRules />} />
           <Route path="/classifications" element={<Classifications />} />
           <Route path="/audit/:id" element={<AuditTrace />} />
         </Route>

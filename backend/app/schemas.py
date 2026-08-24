@@ -288,3 +288,29 @@ class DashboardStats(BaseModel):
     total_classifications: int
     recent_applications: List[ApplicationResponse] = []
     recent_audit_logs: List[AuditLogResponse] = []
+
+
+# ========== Governance Rules ==========
+
+class GovernanceRuleResponse(BaseModel):
+    id: str
+    rule_key: str
+    rule_name: str
+    severity: str
+    category: str
+    score_penalty: int
+    is_active: bool
+    description: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class GovernanceRuleUpdate(BaseModel):
+    rule_name: Optional[str] = Field(None, min_length=1, max_length=200)
+    severity: Optional[str] = Field(None, pattern="^(blocking|warning)$")
+    category: Optional[str] = Field(None, min_length=1, max_length=50)
+    score_penalty: Optional[int] = Field(None, ge=0, le=100)
+    is_active: Optional[bool] = None
+    description: Optional[str] = None

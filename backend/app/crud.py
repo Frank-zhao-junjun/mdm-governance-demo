@@ -162,6 +162,18 @@ def get_governance_rule_map(db: Session) -> dict[str, models.GovernanceRule]:
     return {rule.rule_key: rule for rule in get_governance_rules(db)}
 
 
+def update_governance_rule(db: Session, rule_key: str, data: dict) -> Optional[models.GovernanceRule]:
+    rule = get_governance_rule(db, rule_key)
+    if not rule:
+        return None
+    for key, value in data.items():
+        setattr(rule, key, value)
+    rule.updated_at = datetime.now(timezone.utc)
+    db.commit()
+    db.refresh(rule)
+    return rule
+
+
 def increment_seq(db: Session, rule_id: str) -> int:
     """Atomically increment and return the sequence number.
 

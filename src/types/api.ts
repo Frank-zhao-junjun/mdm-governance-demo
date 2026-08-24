@@ -254,3 +254,16 @@ export interface MetadataGovernanceOverview {
   quality_tests: MetadataQualityTest[];
   traces: MetadataTraceSummary[];
 }
+
+export interface GovernanceRule {
+  id: string;
+  rule_key: string;
+  rule_name: string;
+  severity: 'blocking' | 'warning';
+  category: string;
+  score_penalty: number;
+  is_active: boolean;
+  description?: string;
+  created_at: string;
+  updated_at: string;
+}

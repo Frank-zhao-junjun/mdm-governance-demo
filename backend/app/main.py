@@ -7,7 +7,7 @@ import os
 
 from app.core.config import settings
 from app.core.auth import authenticate_user, create_access_token, require_any
-from app.api import classifications, applications, golden_records, dashboard, metadata_governance
+from app.api import classifications, applications, golden_records, dashboard, metadata_governance, governance_rules
 from app.core.database import engine, Base
 from app.core.schema_compat import ensure_schema_compatibility
 
@@ -55,6 +55,7 @@ app.include_router(applications.router)
 app.include_router(golden_records.router)
 app.include_router(dashboard.router)
 app.include_router(metadata_governance.router)
+app.include_router(governance_rules.router)
 
 
 @app.post("/api/auth/login")

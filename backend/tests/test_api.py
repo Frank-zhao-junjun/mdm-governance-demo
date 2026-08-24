@@ -667,6 +667,35 @@ class TestMetadataGovernanceEndpoints:
         assert any(trace["application_id"] == sample_application.id for trace in data["traces"])
 
 
+class TestGovernanceRuleEndpoints:
+    """Test governance rule management endpoints."""
+
+    def test_list_governance_rules(self, client):
+        response = client.get("/api/governance-rules/")
+        assert response.status_code == 200
+        data = response.json()
+        assert isinstance(data, list)
+        assert any(item["rule_key"] == "name_length" for item in data)
+
+    def test_admin_can_update_governance_rule(self, admin_client):
+        response = admin_client.put(
+            "/api/governance-rules/material_desc_completeness",
+            json={"severity": "blocking", "score_penalty": 15, "is_active": True}
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["rule_key"] == "material_desc_completeness"
+        assert data["severity"] == "blocking"
+        assert data["score_penalty"] == 15
+
+    def test_applicant_cannot_update_governance_rule(self, client):
+        response = client.put(
+            "/api/governance-rules/material_desc_completeness",
+            json={"severity": "blocking"}
+        )
+        assert response.status_code == 403
+
+
 class TestAuthorization:
     """Test authorization - role-based access control."""
 

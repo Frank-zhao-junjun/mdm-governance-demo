@@ -7,6 +7,7 @@ import {
   FolderTree,
   LogOut,
   Network,
+  ShieldAlert,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { getUser, logout } from '@/lib/api';
@@ -24,6 +25,7 @@ const Layout: React.FC = () => {
     { path: '/applications', label: '物料申请', icon: FileText },
     { path: '/golden-records', label: '金标数据', icon: Database },
     { path: '/metadata-governance', label: '元数据治理', icon: Network },
+    { path: '/governance-rules', label: '治理规则', icon: ShieldAlert },
     { path: '/classifications', label: '分类管理', icon: FolderTree },
   ];
 
