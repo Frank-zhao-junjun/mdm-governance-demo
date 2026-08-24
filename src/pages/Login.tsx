@@ -20,8 +20,8 @@ const Login: React.FC = () => {
       await login(userId, password);
       toast.success('登录成功');
       navigate('/dashboard');
-    } catch (err: any) {
-      toast.error('登录失败: ' + (err.message || '未知错误'));
+    } catch (err) {
+      toast.error('登录失败: ' + (err instanceof Error ? err.message : '未知错误'));
     } finally {
       setLoading(false);
     }

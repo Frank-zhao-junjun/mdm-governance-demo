@@ -43,33 +43,36 @@ const NewApplication: React.FC = () => {
       .then((data) => setMajorClasses(data || []));
   }, []);
 
-  useEffect(() => {
+  const handleMajorChange = (value: string) => {
+    setSelectedMajor(value);
     setSelectedMiddle('');
     setSelectedMinor('');
     setMiddleClasses([]);
     setMinorClasses([]);
-    if (selectedMajor) {
-      api<Classification[]>(`/api/classifications/?level=2&parent_id=${selectedMajor}`)
-        .then((data) => setMiddleClasses(data || []));
-    }
+  };
+
+  const handleMiddleChange = (value: string) => {
+    setSelectedMiddle(value);
+    setSelectedMinor('');
+    setMinorClasses([]);
+  };
+
+  useEffect(() => {
+    if (!selectedMajor) return;
+    api<Classification[]>(`/api/classifications/?level=2&parent_id=${selectedMajor}`)
+      .then((data) => setMiddleClasses(data || []));
   }, [selectedMajor]);
 
   useEffect(() => {
-    setSelectedMinor('');
-    setMinorClasses([]);
-    if (selectedMiddle) {
-      api<Classification[]>(`/api/classifications/?level=3&parent_id=${selectedMiddle}`)
-        .then((data) => setMinorClasses(data || []));
-    }
+    if (!selectedMiddle) return;
+    api<Classification[]>(`/api/classifications/?level=3&parent_id=${selectedMiddle}`)
+      .then((data) => setMinorClasses(data || []));
   }, [selectedMiddle]);
 
   useEffect(() => {
-    if (selectedClass) {
-      api<AttributeTemplate[]>(`/api/classifications/${selectedClass}/templates`)
-        .then((data) => setTemplates(data || []));
-    } else {
-      setTemplates([]);
-    }
+    if (!selectedClass) return;
+    api<AttributeTemplate[]>(`/api/classifications/${selectedClass}/templates`)
+      .then((data) => setTemplates(data || []));
   }, [selectedClass]);
 
   const uploadFiles = async (targetAppId: string, files: File[]) => {
@@ -190,7 +193,7 @@ const NewApplication: React.FC = () => {
           <div className="grid grid-cols-3 gap-4">
             <div className="space-y-2">
               <Label>大类 <span className="text-red-500">*</span></Label>
-              <Select value={selectedMajor} onValueChange={setSelectedMajor}>
+              <Select value={selectedMajor} onValueChange={handleMajorChange}>
                 <SelectTrigger><SelectValue placeholder="选择大类" /></SelectTrigger>
                 <SelectContent>
                   {majorClasses.map((c) => (
@@ -201,7 +204,7 @@ const NewApplication: React.FC = () => {
             </div>
             <div className="space-y-2">
               <Label>中类</Label>
-              <Select value={selectedMiddle} onValueChange={setSelectedMiddle} disabled={!selectedMajor || middleClasses.length === 0}>
+              <Select value={selectedMiddle} onValueChange={handleMiddleChange} disabled={!selectedMajor || middleClasses.length === 0}>
                 <SelectTrigger><SelectValue placeholder="选择中类" /></SelectTrigger>
                 <SelectContent>
                   {middleClasses.map((c) => (

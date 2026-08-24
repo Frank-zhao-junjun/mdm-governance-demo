@@ -93,6 +93,7 @@ function Carousel({
 
   React.useEffect(() => {
     if (!api) return
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- 同步初始化 Embla 滚动状态（shadcn/ui 上游写法）
     onSelect(api)
     api.on("reInit", onSelect)
     api.on("select", onSelect)

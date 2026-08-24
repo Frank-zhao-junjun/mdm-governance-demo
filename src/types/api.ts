@@ -79,7 +79,7 @@ export interface Application {
   material_code?: string;
   classification_id: string;
   material_type: 'raw' | 'semi' | 'finished' | 'auxiliary' | 'spare';
-  attribute_values?: Record<string, any>;
+  attribute_values?: Record<string, unknown>;
   attachments?: ApplicationAttachment[];
   status: ApplicationStatus;
   validation_passed: boolean;
@@ -134,7 +134,7 @@ export interface AuditLog {
   executed_at: string;
   status: 'success' | 'failed' | 'pending';
   status_label?: string;
-  details?: Record<string, any>;
+  details?: Record<string, unknown>;
   error_message?: string;
 }
 

@@ -53,7 +53,7 @@ export async function api<T>(path: string, options: RequestInit = {}): Promise<T
     throw new Error('登录已过期，请重新登录');
   }
 
-  let data: any;
+  let data: unknown;
   const contentType = response.headers.get('content-type') || '';
   if (contentType.includes('application/json')) {
     data = await response.json();
@@ -62,7 +62,8 @@ export async function api<T>(path: string, options: RequestInit = {}): Promise<T
   }
 
   if (!response.ok) {
-    const message = data?.detail || data?.message || data || `请求失败: ${response.status}`;
+    const errBody = (data ?? {}) as { detail?: string; message?: string };
+    const message = errBody.detail || errBody.message || data || `请求失败: ${response.status}`;
     toast.error(String(message));
     throw new Error(String(message));
   }
