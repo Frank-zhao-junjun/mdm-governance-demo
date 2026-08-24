@@ -101,12 +101,19 @@ def get_metadata_governance_overview(
             lineage_edges.append({"from": gr_node_id, "to": "openmetadata", "label": "同步元数据"})
 
         if validate_log and validate_log.details:
+            validate_details = validate_log.details
+            warning_count = len(validate_details.get("warnings") or [])
+            blocking_count = len(validate_details.get("blocking_errors") or validate_details.get("errors") or [])
             quality_tests.append({
                 "id": f"validate-{record.id}",
                 "material_code": record.material_code,
                 "test_name": "申请质量校验",
-                "status": "passed" if validate_log.details.get("passed") else "failed",
-                "message": "; ".join(validate_log.details.get("errors") or []) or "质量规则通过",
+                "status": "passed" if validate_details.get("passed") else "failed",
+                "message": "; ".join(validate_details.get("blocking_errors") or validate_details.get("errors") or []) or "质量规则通过",
+                "quality_score": validate_details.get("quality_score"),
+                "blocking_count": blocking_count,
+                "warning_count": warning_count,
+                "rule_version": validate_details.get("rule_version"),
                 "executed_at": validate_log.executed_at.isoformat(),
                 "source": "RalphLoop Validator",
             })
@@ -138,6 +145,17 @@ def get_metadata_governance_overview(
         })
 
     synced_count = sum(1 for item in catalog if item["om_synced"])
+    validator_quality_tests = [
+        test for test in quality_tests
+        if test.get("source") == "RalphLoop Validator" and test.get("quality_score") is not None
+    ]
+    avg_quality_score = (
+        round(sum(test["quality_score"] for test in validator_quality_tests) / len(validator_quality_tests), 2)
+        if validator_quality_tests else 0
+    )
+    total_blocking_hits = sum(test.get("blocking_count") or 0 for test in validator_quality_tests)
+    total_warning_hits = sum(test.get("warning_count") or 0 for test in validator_quality_tests)
+
     return {
         "openmetadata": OpenMetadataSync().health_check(),
         "summary": {
@@ -146,6 +164,9 @@ def get_metadata_governance_overview(
             "btp_published": sum(1 for item in catalog if item["btp_published"]),
             "quality_tests": len(quality_tests),
             "traceable_applications": sum(1 for item in traces if item["step_count"] > 0),
+            "avg_quality_score": avg_quality_score,
+            "blocking_hits": total_blocking_hits,
+            "warning_hits": total_warning_hits,
         },
         "catalog": catalog,
         "lineage": {"nodes": lineage_nodes, "edges": lineage_edges},

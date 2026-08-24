@@ -295,3 +295,96 @@ class TestMaterialValidatorCheckStructure:
         })
         assert invalid_result["passed"] is False
         assert len(invalid_result["errors"]) > 0
+
+
+class TestMaterialValidatorSeverityAndScore:
+    """Test MDG-style blocking/warning severity and quality score."""
+
+    def test_warning_does_not_block_submission(self, seeded_db):
+        """Description warning should not fail overall validation."""
+        validator = MaterialValidator(seeded_db)
+        result = validator.validate({
+            "material_name": "测试不锈钢板材",
+            "material_desc": "",
+            "classification_id": "cls-child-001",
+            "material_type": "raw",
+            "attribute_values": {"material_grade": "Q235", "thickness": "1.0"}
+        })
+        assert result["passed"] is True
+        assert len(result.get("warnings") or []) >= 1
+        assert result.get("quality_score") is not None
+
+    def test_blocking_error_is_reported_in_blocking_errors(self, seeded_db):
+        """Required field miss should be a blocking error."""
+        validator = MaterialValidator(seeded_db)
+        result = validator.validate({
+            "material_name": "",
+            "classification_id": "cls-child-001",
+            "material_type": "raw"
+        })
+        assert result["passed"] is False
+        assert len(result.get("blocking_errors") or []) >= 1
+        assert result["summary"]["blocking_failed"] >= 1
+
+    def test_quality_score_decreases_with_failed_checks(self, seeded_db):
+        """More failed checks should reduce quality score."""
+        validator = MaterialValidator(seeded_db)
+        high_score = validator.validate({
+            "material_name": "测试不锈钢板材",
+            "material_desc": "用于车间生产主材，质量稳定",
+            "classification_id": "cls-child-001",
+            "material_type": "raw",
+            "attribute_values": {"material_grade": "Q235", "thickness": "1.0"}
+        })["quality_score"]
+
+        low_score = validator.validate({
+            "material_name": "钢板",
+            "material_desc": "",
+            "classification_id": "cls-child-001",
+            "material_type": "raw",
+            "attribute_values": {}
+        })["quality_score"]
+
+        assert high_score > low_score
+
+    def test_rule_config_can_change_severity(self, seeded_db):
+        """DB policy should control severity without code changes."""
+        from app import models
+        rule = seeded_db.query(models.GovernanceRule).filter(
+            models.GovernanceRule.rule_key == "material_desc_completeness"
+        ).first()
+        rule.severity = models.RuleSeverity.BLOCKING
+        seeded_db.commit()
+
+        validator = MaterialValidator(seeded_db)
+        result = validator.validate({
+            "material_name": "测试不锈钢板材",
+            "material_desc": "",
+            "classification_id": "cls-child-001",
+            "material_type": "raw",
+            "attribute_values": {"material_grade": "Q235", "thickness": "1.0"}
+        })
+
+        assert result["passed"] is False
+        assert any("物料描述未填写" in message for message in (result.get("blocking_errors") or []))
+
+    def test_rule_config_can_disable_rule(self, seeded_db):
+        """Disabled rule should not contribute checks or penalties."""
+        from app import models
+        rule = seeded_db.query(models.GovernanceRule).filter(
+            models.GovernanceRule.rule_key == "material_desc_completeness"
+        ).first()
+        rule.is_active = False
+        seeded_db.commit()
+
+        validator = MaterialValidator(seeded_db)
+        result = validator.validate({
+            "material_name": "测试不锈钢板材",
+            "material_desc": "",
+            "classification_id": "cls-child-001",
+            "material_type": "raw",
+            "attribute_values": {"material_grade": "Q235", "thickness": "1.0"}
+        })
+
+        assert result["passed"] is True
+        assert all(check["check"] != "material_desc_completeness" for check in result["checks"])

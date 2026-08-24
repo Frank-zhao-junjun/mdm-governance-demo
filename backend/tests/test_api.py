@@ -303,6 +303,21 @@ class TestApprovalEndpoints:
         # Application is still in DRAFT, not PENDING_ADMIN
         assert response.status_code == 400
 
+    def test_admin_approve_quality_gate_blocks_invalid_data(self, admin_client, seeded_db, sample_application):
+        """Admin approval must be blocked when mandatory quality rules fail."""
+        from app import crud
+        crud.update_application(seeded_db, sample_application.id, {
+            "status": models.ApplicationStatus.PENDING_ADMIN,
+            "material_name": "钢板",  # too short, should trigger blocking
+        })
+
+        response = admin_client.post(
+            f"/api/applications/{sample_application.id}/admin-approve",
+            json={"approved": True, "comment": "尝试通过"}
+        )
+        assert response.status_code == 400
+        assert "审批门禁阻断" in response.json()["detail"]
+
 
 class TestPublishEndpoints:
     """Test publish workflow endpoints."""

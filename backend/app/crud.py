@@ -146,6 +146,22 @@ def get_code_rule(db: Session, rule_id: str) -> Optional[models.CodeRule]:
     return db.query(models.CodeRule).filter(models.CodeRule.id == rule_id).first()
 
 
+def get_governance_rules(db: Session) -> List[models.GovernanceRule]:
+    return db.query(models.GovernanceRule).filter(
+        models.GovernanceRule.is_active == True
+    ).all()
+
+
+def get_governance_rule(db: Session, rule_key: str) -> Optional[models.GovernanceRule]:
+    return db.query(models.GovernanceRule).filter(
+        models.GovernanceRule.rule_key == rule_key
+    ).first()
+
+
+def get_governance_rule_map(db: Session) -> dict[str, models.GovernanceRule]:
+    return {rule.rule_key: rule for rule in get_governance_rules(db)}
+
+
 def increment_seq(db: Session, rule_id: str) -> int:
     """Atomically increment and return the sequence number.
 

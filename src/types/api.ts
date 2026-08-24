@@ -32,12 +32,23 @@ export interface ValidationCheck {
   check: string;
   passed: boolean;
   message: string;
+  severity?: 'blocking' | 'warning';
+  category?: string;
 }
 
 export interface ValidationResult {
   passed: boolean;
   checks: ValidationCheck[];
   errors: string[];
+  blocking_errors?: string[];
+  warnings?: string[];
+  quality_score?: number;
+  rule_version?: string;
+  summary?: {
+    total_checks: number;
+    blocking_failed: number;
+    warning_failed: number;
+  };
 }
 
 export interface DedupResult {
@@ -198,6 +209,10 @@ export interface MetadataQualityTest {
   test_name: string;
   status: 'passed' | 'failed';
   message?: string;
+  quality_score?: number;
+  blocking_count?: number;
+  warning_count?: number;
+  rule_version?: string;
   executed_at: string;
   source: string;
 }
@@ -227,6 +242,9 @@ export interface MetadataGovernanceOverview {
     btp_published: number;
     quality_tests: number;
     traceable_applications: number;
+    avg_quality_score?: number;
+    blocking_hits?: number;
+    warning_hits?: number;
   };
   catalog: MetadataCatalogItem[];
   lineage: {

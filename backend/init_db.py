@@ -126,6 +126,84 @@ def init_db():
         ]
         db.add_all(rules)
         db.commit()
+
+        # Seed Governance Rules (externalized quality policy)
+        governance_rules = [
+            models.GovernanceRule(
+                id="gov-rule-required-name",
+                rule_key="required_material_name",
+                rule_name="必填字段-物料名称",
+                severity=models.RuleSeverity.BLOCKING,
+                category="completeness",
+                score_penalty=20,
+                is_active=True,
+            ),
+            models.GovernanceRule(
+                id="gov-rule-required-classification",
+                rule_key="required_classification_id",
+                rule_name="必填字段-分类",
+                severity=models.RuleSeverity.BLOCKING,
+                category="completeness",
+                score_penalty=20,
+                is_active=True,
+            ),
+            models.GovernanceRule(
+                id="gov-rule-required-type",
+                rule_key="required_material_type",
+                rule_name="必填字段-物料类型",
+                severity=models.RuleSeverity.BLOCKING,
+                category="completeness",
+                score_penalty=20,
+                is_active=True,
+            ),
+            models.GovernanceRule(
+                id="gov-rule-name-length",
+                rule_key="name_length",
+                rule_name="名称长度校验",
+                severity=models.RuleSeverity.BLOCKING,
+                category="consistency",
+                score_penalty=20,
+                is_active=True,
+            ),
+            models.GovernanceRule(
+                id="gov-rule-desc",
+                rule_key="material_desc_completeness",
+                rule_name="描述完整性",
+                severity=models.RuleSeverity.WARNING,
+                category="completeness",
+                score_penalty=5,
+                is_active=True,
+            ),
+            models.GovernanceRule(
+                id="gov-rule-classification-exists",
+                rule_key="classification_exists",
+                rule_name="分类存在性",
+                severity=models.RuleSeverity.BLOCKING,
+                category="governance",
+                score_penalty=20,
+                is_active=True,
+            ),
+            models.GovernanceRule(
+                id="gov-rule-material-type",
+                rule_key="material_type",
+                rule_name="物料类型合法性",
+                severity=models.RuleSeverity.BLOCKING,
+                category="governance",
+                score_penalty=20,
+                is_active=True,
+            ),
+            models.GovernanceRule(
+                id="gov-rule-required-coverage",
+                rule_key="required_attr_coverage",
+                rule_name="必填属性完整率",
+                severity=models.RuleSeverity.WARNING,
+                category="completeness",
+                score_penalty=5,
+                is_active=True,
+            ),
+        ]
+        db.add_all(governance_rules)
+        db.commit()
         
         print("✅ Database initialized with seed data")
         

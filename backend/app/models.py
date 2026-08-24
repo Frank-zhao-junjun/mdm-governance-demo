@@ -63,6 +63,11 @@ class StepName(str, PyEnum):
     REVISE = "revise"
 
 
+class RuleSeverity(str, PyEnum):
+    BLOCKING = "blocking"
+    WARNING = "warning"
+
+
 # ========== Models ==========
 
 class MaterialClassification(Base):
@@ -179,6 +184,22 @@ class CodeRule(Base):
     classification_id = Column(String(36), ForeignKey("material_classifications.id"), nullable=True)
     is_active = Column(Boolean, default=True)
     description = Column(Text, nullable=True)
+
+
+class GovernanceRule(Base):
+    """Configurable data governance rule policy for validator."""
+    __tablename__ = "governance_rules"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    rule_key = Column(String(100), unique=True, nullable=False, index=True)
+    rule_name = Column(String(200), nullable=False)
+    severity = Column(Enum(RuleSeverity), nullable=False, default=RuleSeverity.BLOCKING)
+    category = Column(String(50), nullable=False, default="data_quality")
+    score_penalty = Column(Integer, nullable=False, default=20)
+    is_active = Column(Boolean, nullable=False, default=True)
+    description = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=_now_utc)
+    updated_at = Column(DateTime, default=_now_utc, onupdate=_now_utc)
 
 
 class GoldenRecord(Base):

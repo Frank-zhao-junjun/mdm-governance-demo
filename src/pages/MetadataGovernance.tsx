@@ -65,8 +65,8 @@ const MetadataGovernance: React.FC = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card><CardContent className="p-5 flex items-center justify-between"><div><p className="text-sm text-gray-500">元数据资产</p><p className="text-2xl font-bold">{summary?.metadata_assets || 0}</p></div><Database className="w-6 h-6 text-blue-600" /></CardContent></Card>
         <Card><CardContent className="p-5 flex items-center justify-between"><div><p className="text-sm text-gray-500">OM同步</p><p className="text-2xl font-bold">{summary?.om_synced || 0}</p></div><Network className="w-6 h-6 text-green-600" /></CardContent></Card>
-        <Card><CardContent className="p-5 flex items-center justify-between"><div><p className="text-sm text-gray-500">质量测试</p><p className="text-2xl font-bold">{summary?.quality_tests || 0}</p></div><ShieldCheck className="w-6 h-6 text-purple-600" /></CardContent></Card>
-        <Card><CardContent className="p-5 flex items-center justify-between"><div><p className="text-sm text-gray-500">可追溯申请</p><p className="text-2xl font-bold">{summary?.traceable_applications || 0}</p></div><ClipboardList className="w-6 h-6 text-orange-600" /></CardContent></Card>
+        <Card><CardContent className="p-5 flex items-center justify-between"><div><p className="text-sm text-gray-500">质量测试</p><p className="text-2xl font-bold">{summary?.quality_tests || 0}</p><p className="text-xs text-gray-500 mt-1">平均质量分 {summary?.avg_quality_score ?? 0}</p></div><ShieldCheck className="w-6 h-6 text-purple-600" /></CardContent></Card>
+        <Card><CardContent className="p-5 flex items-center justify-between"><div><p className="text-sm text-gray-500">可追溯申请</p><p className="text-2xl font-bold">{summary?.traceable_applications || 0}</p><p className="text-xs text-gray-500 mt-1">阻断 {summary?.blocking_hits ?? 0} / 预警 {summary?.warning_hits ?? 0}</p></div><ClipboardList className="w-6 h-6 text-orange-600" /></CardContent></Card>
       </div>
 
       <Tabs defaultValue="catalog" className="space-y-4">
@@ -127,7 +127,7 @@ const MetadataGovernance: React.FC = () => {
               {(overview?.quality_tests || []).map((test) => (
                 <div key={test.id} className="flex items-center gap-3 rounded-lg bg-gray-50 p-3">
                   {test.status === 'passed' ? <CheckCircle className="w-5 h-5 text-green-500" /> : <XCircle className="w-5 h-5 text-red-500" />}
-                  <div className="flex-1"><p className="font-medium">{test.test_name}</p><p className="text-xs text-gray-500">{test.material_code} · {test.source} · {new Date(test.executed_at).toLocaleString('zh-CN')}</p></div>
+                  <div className="flex-1"><p className="font-medium">{test.test_name}</p><p className="text-xs text-gray-500">{test.material_code} · {test.source} · {new Date(test.executed_at).toLocaleString('zh-CN')}</p><p className="text-xs text-gray-500">质量分 {test.quality_score ?? '-'} · 阻断 {test.blocking_count ?? 0} · 预警 {test.warning_count ?? 0}</p></div>
                   <span className="text-sm text-gray-600">{test.message}</span>
                 </div>
               ))}

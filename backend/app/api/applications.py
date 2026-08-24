@@ -269,6 +269,7 @@ def submit_application(
         validator = MaterialValidator(db)
         val_result = validator.validate({
             "material_name": app.material_name,
+            "material_desc": app.material_desc,
             "classification_id": app.classification_id,
             "material_type": app.material_type.value,
             "attribute_values": app.attribute_values
@@ -290,7 +291,7 @@ def submit_application(
             })
             raise HTTPException(
                 status_code=400,
-                detail=f"质量校验未通过: {', '.join(val_result['errors'])}"
+                detail=f"质量校验未通过(阻断): {', '.join(val_result['blocking_errors'])}"
             )
         
         # Step 2: Duplicate check
@@ -382,6 +383,31 @@ def admin_approve(
     
     if app.status != models.ApplicationStatus.PENDING_ADMIN:
         raise HTTPException(status_code=400, detail="当前状态不是待管理员审批")
+
+    # Re-run quality gate before admin approval to prevent bypass via stale draft state.
+    validator = MaterialValidator(db)
+    val_result = validator.validate({
+        "material_name": app.material_name,
+        "material_desc": app.material_desc,
+        "classification_id": app.classification_id,
+        "material_type": app.material_type.value,
+        "attribute_values": app.attribute_values,
+    })
+
+    if not val_result["passed"]:
+        crud.update_application(db, app_id, {
+            "validation_result": val_result,
+            "validation_passed": False,
+        })
+        raise HTTPException(
+            status_code=400,
+            detail=f"审批门禁阻断: {', '.join(val_result['blocking_errors'])}",
+        )
+
+    crud.update_application(db, app_id, {
+        "validation_result": val_result,
+        "validation_passed": True,
+    })
     
     audit = AuditService(db)
     
@@ -419,7 +445,12 @@ def admin_approve(
         executed_by=user["id"],
         executed_by_name=user["name"],
         status="success",
-        details={"approved": True, "comment": data.comment}
+        details={
+            "approved": True,
+            "comment": data.comment,
+            "quality_score": val_result.get("quality_score"),
+            "warning_count": len(val_result.get("warnings") or []),
+        }
     )
     
     return {"success": True, "message": "管理员审批通过，等待部门审批"}
