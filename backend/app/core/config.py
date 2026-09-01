@@ -1,30 +1,24 @@
-"""Core configuration for the MDM Governance platform."""
+"""Core configuration for the stock-data governance service."""
 import os
+
 from dotenv import load_dotenv
 
 load_dotenv()
 
+
 class Settings:
-    PROJECT_NAME: str = "RalphLoop MDM Governance"
-    VERSION: str = "1.0.0"
-    
+    PROJECT_NAME: str = "Stock Data Governance"
+    VERSION: str = "2.0.0"
+
     # Database — SQLite for dev, override with PostgreSQL in production
     DATABASE_URL: str = os.getenv("SQLALCHEMY_DATABASE_URL", "sqlite:///./mdm_governance.db")
-    
-    # OpenMetadata — disabled by default for dev
-    OM_HOST: str = os.getenv("OPENMETADATA_HOST", "http://localhost:8585/api")
-    OM_TOKEN: str = os.getenv("OPENMETADATA_TOKEN", "")
-    OM_ENABLED: bool = os.getenv("OM_ENABLED", "false").lower() == "true"
-    
-    # BTP Mock — disabled by default for dev
-    BTP_MOCK_URL: str = os.getenv("BTP_MOCK_URL", "http://localhost:8888")
-    BTP_ENABLED: bool = os.getenv("BTP_ENABLED", "false").lower() == "true"
-    
+
     # Environment
     ENV: str = os.getenv("ENV", "development")
     DEBUG: bool = ENV == "development"
 
     # JWT signing key — required in production, optional in development
     SECRET_KEY: str = os.getenv("MDM_SECRET_KEY", "")
+
 
 settings = Settings()

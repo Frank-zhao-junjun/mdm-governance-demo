@@ -4,14 +4,13 @@ import { Toaster } from '@/components/ui/sonner';
 import Layout from './components/Layout';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
-import Applications from './pages/Applications';
-import ApplicationDetail from './pages/ApplicationDetail';
-import NewApplication from './pages/NewApplication';
-import GoldenRecords from './pages/GoldenRecords';
-import Classifications from './pages/Classifications';
-import AuditTrace from './pages/AuditTrace';
-import MetadataGovernance from './pages/MetadataGovernance';
-import GovernanceRules from './pages/GovernanceRules';
+import DataStandards from './pages/DataStandards';
+import QualityChecks from './pages/QualityChecks';
+import QualityReport from './pages/QualityReport';
+import Copilot from './pages/Copilot';
+import GovernanceDashboard from './pages/GovernanceDashboard';
+import AgentActivity from './pages/AgentActivity';
+import DisputeView from './pages/DisputeView';
 
 const App: React.FC = () => {
   return (
@@ -22,14 +21,14 @@ const App: React.FC = () => {
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
         <Route element={<Layout />}>
           <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/applications" element={<Applications />} />
-          <Route path="/applications/new" element={<NewApplication />} />
-          <Route path="/applications/:id" element={<ApplicationDetail />} />
-          <Route path="/golden-records" element={<GoldenRecords />} />
-          <Route path="/metadata-governance" element={<MetadataGovernance />} />
-          <Route path="/governance-rules" element={<GovernanceRules />} />
-          <Route path="/classifications" element={<Classifications />} />
-          <Route path="/audit/:id" element={<AuditTrace />} />
+          <Route path="/quality" element={<Navigate to="/quality/standards" replace />} />
+          <Route path="/quality/standards" element={<DataStandards />} />
+          <Route path="/quality/checks" element={<QualityChecks />} />
+          <Route path="/quality/checks/report" element={<QualityReport />} />
+          <Route path="/copilot" element={<Copilot />} />
+          <Route path="/governance" element={<GovernanceDashboard />} />
+          <Route path="/agents" element={<AgentActivity />} />
+          <Route path="/disputes" element={<DisputeView />} />
         </Route>
       </Routes>
     </Router>

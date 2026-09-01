@@ -1,15 +1,15 @@
 """pytest configuration and shared fixtures."""
 import os
 import sys
+
 import pytest
+from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from fastapi.testclient import TestClient
+from sqlalchemy.pool import StaticPool
 
 # Ensure backend/app is in path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
-
-from sqlalchemy.pool import StaticPool
 
 from app.core.database import Base, get_db
 from app.main import app
@@ -49,197 +49,73 @@ def db():
     Base.metadata.drop_all(bind=engine)
 
 
+def _make_client(user_id: str, role: str) -> TestClient:
+    """Build a TestClient carrying a JWT for the given mock user."""
+    from app.core.auth import create_access_token
+    token = create_access_token({"sub": user_id, "role": role})
+    os.environ.setdefault("ENV", "test")
+    client = TestClient(app)
+    client.headers.update({"Authorization": f"Bearer {token}"})
+    return client
+
+
 @pytest.fixture(scope="function")
 def client(seeded_db):
-    """TestClient with authenticated default user and seeded data."""
-    from app.core.auth import create_access_token
-    token = create_access_token({"sub": "user001", "role": "applicant"})
-    
-    # Create mock user in DB for auth checks
-    # We need to patch get_current_user to not require DEBUG mode
-    original_debug = os.environ.get("ENV", "")
-    os.environ["ENV"] = "test"
-    
-    with TestClient(app) as c:
-        c.headers.update({"Authorization": f"Bearer {token}"})
-        yield c
-    
-    os.environ["ENV"] = original_debug
+    """Read-only applicant client (user001) + seeded standards."""
+    return _make_client("user001", "applicant")
+
+
+@pytest.fixture(scope="function")
+def data_client(seeded_db):
+    """Data-admin client (data001) — write permissions for standards."""
+    return _make_client("data001", "data_admin")
+
+
+@pytest.fixture(scope="function")
+def dept_client(seeded_db):
+    """Dept-approver client (dept001) — read-only for standards."""
+    return _make_client("dept001", "dept_approver")
 
 
 @pytest.fixture(scope="function")
 def seeded_db(db):
-    """Database seeded with base classification data."""
-    # Level-1 classification
-    parent = models.MaterialClassification(
-        id="cls-parent-001",
-        code="M01",
-        name="原材料",
-        level=1,
-        is_active=True
-    )
-    db.add(parent)
-    
-    # Level-2 classification
-    child = models.MaterialClassification(
-        id="cls-child-001",
-        code="0101",
-        name="金属材料",
-        level=2,
-        parent_id="cls-parent-001",
-        is_active=True
-    )
-    db.add(child)
-    
-    # Attribute templates
-    db.add(models.AttributeTemplate(
-        id="tpl-001",
-        classification_id="cls-child-001",
-        field_name="material_grade",
-        field_label="材质等级",
-        field_type="select",
-        is_required=True,
-        options=["Q235", "304不锈钢", "316不锈钢"]
+    """Database seeded with data standards + stock records."""
+    db.add(models.DataStandard(
+        entity_type="material",
+        sap_table="MARA",
+        field_name="MATNR",
+        field_label="物料编码",
+        data_type="string",
+        required=True,
+        pattern=r"^M\d{5}$",
+        unique=True,
+        owner="钱数据",
+        standard_source="sap",
+        dept_scope=["采购部"],
+        description="物料主编码",
     ))
-    db.add(models.AttributeTemplate(
-        id="tpl-002",
-        classification_id="cls-child-001",
-        field_name="thickness",
-        field_label="厚度(mm)",
-        field_type="number",
-        is_required=True
+    db.add(models.DataStandard(
+        entity_type="supplier",
+        sap_table="LFA1",
+        field_name="LIFNR",
+        field_label="供应商编号",
+        data_type="string",
+        required=True,
+        pattern=r"^[0-9]{10}$",
+        unique=True,
+        owner="钱数据",
+        standard_source="sap",
     ))
-    db.add(models.AttributeTemplate(
-        id="tpl-003",
-        classification_id="cls-child-001",
-        field_name="width",
-        field_label="宽度(mm)",
-        field_type="number",
-        is_required=False
+    db.add(models.MaterialRecord(
+        material_code="M10001",
+        material_name="六角螺栓 M8×30 镀锌",
+        attributes={"MTART": "ROH", "MEINS": "PC"},
     ))
-    
-    # Code rule
-    db.add(models.CodeRule(
-        id="rule-001",
-        name="金属材料编码规则",
-        pattern="{大类}-{小类}-{流水}",
-        prefix="M",
-        current_seq=0,
-        seq_length=5,
-        classification_id="cls-child-001",
-        is_active=True
+    db.add(models.PartnerRecord(
+        entity_type="supplier",
+        partner_code="1000000001",
+        partner_name="华成精密机械有限公司",
+        attributes={"CITY1": "上海", "ZTERM": "0010"},
     ))
-
-    # Governance rules
-    db.add_all([
-        models.GovernanceRule(
-            id="gov-rule-required-name",
-            rule_key="required_material_name",
-            rule_name="必填字段-物料名称",
-            severity=models.RuleSeverity.BLOCKING,
-            category="completeness",
-            score_penalty=20,
-            is_active=True,
-        ),
-        models.GovernanceRule(
-            id="gov-rule-required-classification",
-            rule_key="required_classification_id",
-            rule_name="必填字段-分类",
-            severity=models.RuleSeverity.BLOCKING,
-            category="completeness",
-            score_penalty=20,
-            is_active=True,
-        ),
-        models.GovernanceRule(
-            id="gov-rule-required-type",
-            rule_key="required_material_type",
-            rule_name="必填字段-物料类型",
-            severity=models.RuleSeverity.BLOCKING,
-            category="completeness",
-            score_penalty=20,
-            is_active=True,
-        ),
-        models.GovernanceRule(
-            id="gov-rule-name-length",
-            rule_key="name_length",
-            rule_name="名称长度校验",
-            severity=models.RuleSeverity.BLOCKING,
-            category="consistency",
-            score_penalty=20,
-            is_active=True,
-        ),
-        models.GovernanceRule(
-            id="gov-rule-desc",
-            rule_key="material_desc_completeness",
-            rule_name="描述完整性",
-            severity=models.RuleSeverity.WARNING,
-            category="completeness",
-            score_penalty=5,
-            is_active=True,
-        ),
-        models.GovernanceRule(
-            id="gov-rule-classification-exists",
-            rule_key="classification_exists",
-            rule_name="分类存在性",
-            severity=models.RuleSeverity.BLOCKING,
-            category="governance",
-            score_penalty=20,
-            is_active=True,
-        ),
-        models.GovernanceRule(
-            id="gov-rule-material-type",
-            rule_key="material_type",
-            rule_name="物料类型合法性",
-            severity=models.RuleSeverity.BLOCKING,
-            category="governance",
-            score_penalty=20,
-            is_active=True,
-        ),
-        models.GovernanceRule(
-            id="gov-rule-required-coverage",
-            rule_key="required_attr_coverage",
-            rule_name="必填属性完整率",
-            severity=models.RuleSeverity.WARNING,
-            category="completeness",
-            score_penalty=5,
-            is_active=True,
-        ),
-    ])
-    
     db.commit()
     yield db
-
-
-@pytest.fixture
-def admin_client(seeded_db):
-    """TestClient authenticated as admin."""
-    from app.core.auth import create_access_token
-    token = create_access_token({"sub": "admin001", "role": "admin"})
-    with TestClient(app) as c:
-        c.headers.update({"Authorization": f"Bearer {token}"})
-        yield c
-
-
-@pytest.fixture
-def dept_client(seeded_db):
-    """TestClient authenticated as department approver."""
-    from app.core.auth import create_access_token
-    token = create_access_token({"sub": "dept001", "role": "dept_approver"})
-    with TestClient(app) as c:
-        c.headers.update({"Authorization": f"Bearer {token}"})
-        yield c
-
-
-@pytest.fixture
-def sample_application(seeded_db):
-    """Create a sample material application in draft state."""
-    from app import crud, schemas
-    data = schemas.ApplicationCreate(
-        material_name="测试不锈钢板材304",
-        material_desc="2mm厚304不锈钢板",
-        classification_id="cls-child-001",
-        material_type=models.MaterialType.RAW,
-        attribute_values={"material_grade": "304不锈钢", "thickness": "2.0", "width": "1000"}
-    )
-    app = crud.create_application(seeded_db, data, "user001", "张三")
-    yield app

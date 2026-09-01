@@ -1,269 +1,290 @@
-/** Common API types for the MDM Governance frontend */
+/** 存量数据治理前端类型定义（与 backend/app/schemas.py 字段一一对应） */
+
+// ========== 认证 ==========
+
+export type UserRole = 'applicant' | 'admin' | 'data_admin' | 'dept_approver';
 
 export interface User {
   id: string;
   name: string;
-  role: 'applicant' | 'admin' | 'data_admin' | 'dept_approver';
+  role: UserRole;
   department: string;
 }
 
-export interface Classification {
-  id: string;
-  code: string;
-  name: string;
-  level: number;
-  description?: string;
-  children?: Classification[];
+// ========== 数据标准（SPEC §2.1 / §3.1） ==========
+
+export type EntityType = 'material' | 'supplier' | 'customer';
+
+/** 与 schemas.DataStandardBase.data_type 的 pattern 一致 */
+export type StandardDataType =
+  | 'string'
+  | 'number'
+  | 'date'
+  | 'enum'
+  | 'boolean'
+  | 'amount'
+  | 'text';
+
+/** 与 schemas.DataStandardBase.standard_source 的 pattern 一致 */
+export type StandardSource = 'sap' | 'industry' | 'internal';
+
+/** 业务属性（标准主题 / 标准小类等展示型元数据），落 data_standards.business_attrs JSON 列 */
+export interface DataStandardBusinessAttrs {
+  standard_topic?: string | null;
+  standard_subcategory?: string | null;
+  [key: string]: unknown;
 }
 
-export interface AttributeTemplate {
-  id: string;
-  classification_id: string;
+/** POST /api/data-standards 请求体（= schemas.DataStandardCreate） */
+export interface DataStandardCreatePayload {
+  entity_type: EntityType;
+  sap_table?: string | null;
   field_name: string;
   field_label: string;
-  field_type: 'text' | 'number' | 'date' | 'select' | 'boolean';
-  is_required: boolean;
-  options?: string[];
-  default_value?: string;
-  description?: string;
+  data_type: StandardDataType;
+  max_length?: number | null;
+  min_value?: number | null;
+  max_value?: number | null;
+  enum_values?: string[] | null;
+  required?: boolean;
+  pattern?: string | null;
+  unique?: boolean;
+  business_attrs?: DataStandardBusinessAttrs | null;
+  owner?: string | null;
+  standard_source?: StandardSource | null;
+  dept_scope?: string[] | null;
+  description?: string | null;
+  sap_field_desc?: string | null;
 }
 
-export interface ValidationCheck {
-  check: string;
-  passed: boolean;
-  message: string;
-  severity?: 'blocking' | 'warning';
-  category?: string;
+/**
+ * PUT /api/data-standards/{id} 请求体（= schemas.DataStandardUpdate）。
+ * 注意：entity_type / sap_table / field_name 为身份键，后端不接受更新。
+ */
+export interface DataStandardUpdatePayload {
+  field_label?: string | null;
+  data_type?: StandardDataType | null;
+  max_length?: number | null;
+  min_value?: number | null;
+  max_value?: number | null;
+  enum_values?: string[] | null;
+  required?: boolean | null;
+  pattern?: string | null;
+  unique?: boolean | null;
+  business_attrs?: DataStandardBusinessAttrs | null;
+  owner?: string | null;
+  standard_source?: StandardSource | null;
+  dept_scope?: string[] | null;
+  description?: string | null;
+  sap_field_desc?: string | null;
 }
 
-export interface ValidationResult {
-  passed: boolean;
-  checks: ValidationCheck[];
-  errors: string[];
-  blocking_errors?: string[];
-  warnings?: string[];
-  quality_score?: number;
-  rule_version?: string;
-  summary?: {
-    total_checks: number;
-    blocking_failed: number;
-    warning_failed: number;
-  };
-}
-
-export interface DedupResult {
-  is_duplicate: boolean;
-  confidence: number;
-  similar_materials: Array<{
-    material_code: string;
-    material_name: string;
-    similarity: number;
-    reason: string;
-  }>;
-}
-
-export interface ApplicationAttachment {
+/** GET /api/data-standards 响应项（= schemas.DataStandardResponse） */
+export interface DataStandard extends DataStandardCreatePayload {
   id: string;
-  original_name: string;
-  stored_name?: string;
-  content_type: string;
-  size: number;
-  uploaded_by: string;
-  uploaded_by_name?: string;
-  uploaded_at: string;
-  download_url: string;
-}
-
-export type ApplicationStatus = 
-  | 'draft' 
-  | 'pending_admin' 
-  | 'pending_dept' 
-  | 'approved' 
-  | 'rejected' 
-  | 'published';
-
-export interface Application {
-  id: string;
-  app_no: string;
-  material_name: string;
-  material_desc?: string;
-  material_code?: string;
-  classification_id: string;
-  material_type: 'raw' | 'semi' | 'finished' | 'auxiliary' | 'spare';
-  attribute_values?: Record<string, unknown>;
-  attachments?: ApplicationAttachment[];
-  status: ApplicationStatus;
-  validation_passed: boolean;
-  is_duplicate: boolean;
-  validation_result?: ValidationResult;
-  dedup_result?: DedupResult;
-  created_by: string;
-  created_by_name?: string;
-  department?: string;
-  created_at: string;
-  updated_at: string;
-  submitted_at?: string;
-  admin_approved: boolean;
-  admin_approved_by?: string;
-  admin_approved_at?: string;
-  admin_comment?: string;
-  dept_approved: boolean;
-  dept_approved_by?: string;
-  dept_approved_at?: string;
-  dept_comment?: string;
-}
-
-export interface GoldenRecord {
-  id: string;
-  application_id?: string;
-  material_code: string;
-  material_name: string;
-  material_desc?: string;
-  classification_id: string;
-  classification_path?: string;
-  material_type: string;
-  status: 'active' | 'obsolete';
-  version: number;
-  revision: number;
-  btp_published: boolean;
-  btp_published_at?: string;
-  om_synced: boolean;
-  om_synced_at?: string;
-  om_entity_fqn?: string;
-  created_by: string;
+  entity_type: EntityType;
+  field_name: string;
+  field_label: string;
+  data_type: StandardDataType;
+  required: boolean;
+  unique: boolean;
   created_at: string;
   updated_at: string;
 }
 
-export interface AuditLog {
+/** GET /api/data-standards 响应（= schemas.DataStandardListResponse） */
+export interface DataStandardListResponse {
+  total: number;
+  items: DataStandard[];
+}
+
+/** GET /api/data-standards 查询参数 */
+export interface DataStandardQuery {
+  entity_type?: EntityType;
+  sap_table?: string;
+  skip?: number;
+  limit?: number;
+}
+
+// ========== AI Governance Copilot ==========
+
+export type GovernanceTicketType = 'quality' | 'merge';
+export type GovernanceTicketStatus = 'draft' | 'pending' | 'approved' | 'rejected' | 'executing' | 'done' | 'failed';
+
+export interface GovernanceTicket {
   id: string;
-  step_id: string;
-  step_name: string;
-  step_label: string;
-  executed_by: string;
-  executed_by_name?: string;
-  executed_at: string;
-  status: 'success' | 'failed' | 'pending';
-  status_label?: string;
-  details?: Record<string, unknown>;
-  error_message?: string;
-}
-
-export interface ApiResponse<T> {
-  success: boolean;
-  message?: string;
-  data?: T;
-  error?: string;
-}
-
-export interface DashboardStats {
-  stats: {
-    total_applications: number;
-    pending_admin: number;
-    pending_dept: number;
-    approved: number;
-    rejected: number;
-    published: number;
-    total_golden_records: number;
-    total_classifications: number;
-  };
-  recent_applications: Application[];
-  recent_audit_logs: AuditLog[];
-}
-
-export interface MetadataCatalogItem {
-  id: string;
-  application_id?: string;
-  material_code: string;
-  material_name: string;
-  material_type: string;
-  classification_path?: string;
-  attribute_count: number;
-  status: string;
-  version: number;
-  revision: number;
-  btp_published: boolean;
-  btp_published_at?: string;
-  om_synced: boolean;
-  om_synced_at?: string;
-  om_entity_fqn: string;
+  ticket_type: GovernanceTicketType;
+  request_id: string;
+  status: GovernanceTicketStatus;
+  evidence_json: Record<string, unknown> | null;
+  trace_id: string | null;
   created_at: string;
 }
 
-export interface MetadataLineageNode {
+export interface TodoListResponse {
+  total: number;
+  items: GovernanceTicket[];
+}
+
+export interface GovernanceReport {
+  quality_score: number;
+  duplicate_rate: number;
+  pending_todos: number;
+  agent_activity: number;
+}
+
+export interface AgentTrace {
   id: string;
-  label: string;
-  type: 'source' | 'application' | 'golden_record' | 'external';
-  subtitle?: string;
+  trace_id: string;
+  agent_name: string;
+  model_version: string | null;
+  input_summary: string;
+  evidence_refs_json: unknown;
+  decision_snapshot_json: unknown;
+  created_at: string;
 }
 
-export interface MetadataLineageEdge {
-  from: string;
-  to: string;
-  label: string;
-}
-
-export interface MetadataQualityTest {
+export interface ApprovalEvidence {
   id: string;
-  material_code: string;
-  test_name: string;
-  status: 'passed' | 'failed';
-  message?: string;
-  quality_score?: number;
-  blocking_count?: number;
-  warning_count?: number;
-  rule_version?: string;
-  executed_at: string;
-  source: string;
+  ticket_type: GovernanceTicketType;
+  ticket_id: string;
+  approver_id: string;
+  action: 'approve' | 'reject' | 'overturn';
+  opinion: string | null;
+  snapshot_json: Record<string, unknown> | null;
+  created_at: string;
 }
 
-export interface MetadataTraceSummary {
-  application_id: string;
-  app_no: string;
-  material_name: string;
-  material_code?: string;
-  status: ApplicationStatus;
-  step_count: number;
-  last_step?: string;
-  last_status?: 'success' | 'failed' | 'pending';
-  last_executed_at?: string;
+export interface AccountabilityResponse {
+  ticket: GovernanceTicket;
+  trace: AgentTrace | null;
+  approval_evidence: ApprovalEvidence[];
 }
 
-export interface MetadataGovernanceOverview {
-  openmetadata: {
-    status: 'connected' | 'disconnected' | 'disabled';
-    message?: string;
-    version?: string;
-    error?: string;
-  };
-  summary: {
-    metadata_assets: number;
-    om_synced: number;
-    btp_published: number;
-    quality_tests: number;
-    traceable_applications: number;
-    avg_quality_score?: number;
-    blocking_hits?: number;
-    warning_hits?: number;
-  };
-  catalog: MetadataCatalogItem[];
-  lineage: {
-    nodes: MetadataLineageNode[];
-    edges: MetadataLineageEdge[];
-  };
-  quality_tests: MetadataQualityTest[];
-  traces: MetadataTraceSummary[];
-}
-
-export interface GovernanceRule {
+export interface GovernanceOwner {
   id: string;
-  rule_key: string;
-  rule_name: string;
-  severity: 'blocking' | 'warning';
-  category: string;
-  score_penalty: number;
+  role: 'owner' | 'steward' | 'approver';
+  name: string;
+  department: string;
+  domain: string;
+  email: string;
   is_active: boolean;
-  description?: string;
+}
+
+// ========== 质量检测（SPEC §3.2 / §5） ==========
+
+/** 与 backend/app/models.py RuleType 落库名一致（v1 五种规则） */
+export type RuleType = 'null_check' | 'format_check' | 'range_check' | 'length_check' | 'unique_check';
+
+/** 与 backend quality_checks.py _SEVERITIES 三档一致 */
+export type CheckSeverity = 'error' | 'warning' | 'info';
+
+/** POST /api/quality-checks/run 请求体（= schemas.QualityCheckRunRequest） */
+export interface QualityRunPayload {
+  entity_type: EntityType;
+  entity_ids?: string[] | null;
+  rule_ids?: string[] | null;
+}
+
+/** POST /api/quality-checks/run 响应（= schemas.QualityCheckRunResponse） */
+export interface QualityRunResponse {
+  batch_id: string;
+  total_checked: number;
+  passed: number;
+  failed: number;
+  /** 无数据源跳过的检查数（Phase 2 设计决策 3） */
+  skipped: number;
+}
+
+/** GET /api/quality-checks/rules 响应项（= schemas.QualityCheckRuleResponse） */
+export interface QualityCheckRule {
+  id: string;
+  name: string;
+  description: string | null;
+  entity_type: EntityType;
+  rule_type: RuleType;
+  field_name: string | null;
+  standard_id: string | null;
+  severity: CheckSeverity;
+  is_active: boolean;
   created_at: string;
   updated_at: string;
+}
+
+/** GET /api/quality-checks/rules 响应（= schemas.QualityCheckRuleListResponse） */
+export interface QualityCheckRuleListResponse {
+  total: number;
+  items: QualityCheckRule[];
+}
+
+/** GET /api/quality-checks/batches 响应项（= schemas.QualityCheckBatchSummaryResponse） */
+export interface QualityCheckBatch {
+  id: string;
+  entity_type: EntityType;
+  total_entities: number;
+  total_checks: number;
+  passed: number;
+  failed: number;
+  skipped_checks: number;
+  rule_ids: string[] | null;
+  triggered_by: string;
+  started_at: string;
+  finished_at: string | null;
+}
+
+/** GET /api/quality-checks/batches 响应（= schemas.QualityCheckBatchListResponse） */
+export interface QualityCheckBatchListResponse {
+  total: number;
+  items: QualityCheckBatch[];
+}
+
+/** GET /api/quality-checks/results 响应项（= schemas.QualityCheckResultResponse） */
+export interface QualityCheckResult {
+  id: string;
+  rule_id: string;
+  batch_id: string;
+  entity_id: string;
+  entity_type: EntityType;
+  field_name: string | null;
+  field_value: string | null;
+  severity: CheckSeverity;
+  message: string | null;
+  checked_at: string;
+}
+
+/** GET /api/quality-checks/results 响应（= schemas.QualityCheckResultListResponse） */
+export interface QualityCheckResultListResponse {
+  total: number;
+  items: QualityCheckResult[];
+}
+
+/** 按规则统计（= schemas.ReportRuleStat；total 口径 = 批次实体数，设计决策 4） */
+export interface QualityReportRuleStat {
+  rule_id: string;
+  rule_name: string;
+  total: number;
+  failed: number;
+  pass_rate: number;
+}
+
+/** Top 问题（= schemas.ReportTopIssue） */
+export interface QualityReportTopIssue {
+  field_name: string | null;
+  issue_count: number;
+  issue_type: RuleType | null;
+  message: string | null;
+}
+
+/** GET /api/quality-checks/report 响应（= schemas.QualityCheckReportResponse） */
+export interface QualityReport {
+  batch_id: string;
+  entity_type: EntityType;
+  total_entities: number;
+  total_checks: number;
+  passed: number;
+  failed: number;
+  pass_rate: number;
+  by_severity: Record<CheckSeverity, number>;
+  by_rule: QualityReportRuleStat[];
+  top_issues: QualityReportTopIssue[];
 }

@@ -1,316 +1,253 @@
-"""Pydantic schemas for API request/response models."""
-from typing import Optional, List, Dict, Any
+"""Pydantic schemas for the stock-data governance service."""
 from datetime import datetime
-from enum import Enum
+from typing import Any, Dict, List, Literal, Optional
 
-from pydantic import BaseModel, Field, ConfigDict
-
-
-# ========== Enums ==========
-
-class MaterialType(str, Enum):
-    RAW = "raw"
-    SEMI = "semi"
-    FINISHED = "finished"
-    AUXILIARY = "auxiliary"
-    SPARE = "spare"
+from pydantic import BaseModel, ConfigDict, Field
 
 
-class ApplicationStatus(str, Enum):
-    DRAFT = "draft"
-    PENDING_ADMIN = "pending_admin"
-    PENDING_DEPT = "pending_dept"
-    APPROVED = "approved"
-    PUBLISHING = "publishing"
-    REJECTED = "rejected"
-    PUBLISHED = "published"
+# ========== Data Standards (SPEC §3.1) ==========
 
-
-# ========== Classification ==========
-
-class ClassificationBase(BaseModel):
-    code: str = Field(..., max_length=10)
-    name: str = Field(..., max_length=100)
-    level: int = Field(..., ge=1, le=3)
-    parent_id: Optional[str] = None
+class DataStandardBase(BaseModel):
+    entity_type: str = Field(..., pattern="^(material|supplier|customer)$")
+    sap_table: Optional[str] = Field(None, max_length=50)
+    field_name: str = Field(..., min_length=1, max_length=100)
+    field_label: str = Field(..., min_length=1, max_length=200)
+    data_type: str = Field(..., pattern="^(string|number|date|enum|boolean|amount|text)$")
+    max_length: Optional[int] = Field(None, ge=1, le=10000)
+    min_value: Optional[float] = None
+    max_value: Optional[float] = None
+    enum_values: Optional[List[str]] = None
+    required: bool = False
+    pattern: Optional[str] = Field(None, max_length=200)
+    unique: bool = False
+    business_attrs: Optional[Dict[str, Any]] = None
+    owner: Optional[str] = Field(None, max_length=50)
+    standard_source: Optional[str] = Field(None, pattern="^(sap|industry|internal)$")
+    dept_scope: Optional[List[str]] = None
     description: Optional[str] = None
+    sap_field_desc: Optional[str] = None
 
 
-class ClassificationCreate(ClassificationBase):
+class DataStandardCreate(DataStandardBase):
     pass
 
 
-class ClassificationResponse(ClassificationBase):
+class DataStandardUpdate(BaseModel):
+    field_label: Optional[str] = Field(None, min_length=1, max_length=200)
+    data_type: Optional[str] = Field(None, pattern="^(string|number|date|enum|boolean|amount|text)$")
+    max_length: Optional[int] = Field(None, ge=1, le=10000)
+    min_value: Optional[float] = None
+    max_value: Optional[float] = None
+    enum_values: Optional[List[str]] = None
+    required: Optional[bool] = None
+    pattern: Optional[str] = Field(None, max_length=200)
+    unique: Optional[bool] = None
+    business_attrs: Optional[Dict[str, Any]] = None
+    owner: Optional[str] = Field(None, max_length=50)
+    standard_source: Optional[str] = Field(None, pattern="^(sap|industry|internal)$")
+    dept_scope: Optional[List[str]] = None
+    description: Optional[str] = None
+    sap_field_desc: Optional[str] = None
+
+
+class DataStandardResponse(DataStandardBase):
     id: str
-    is_active: bool = True
     created_at: datetime
     updated_at: datetime
-    children: List["ClassificationResponse"] = []
-    
+
     model_config = ConfigDict(from_attributes=True)
 
 
-ClassificationResponse.model_rebuild()
+class DataStandardListResponse(BaseModel):
+    total: int
+    items: List[DataStandardResponse]
 
 
-# ========== Attribute Template ==========
+# ========== Quality Checks (SPEC §3.2) ==========
 
-class AttributeTemplateBase(BaseModel):
-    classification_id: str
-    field_name: str = Field(..., max_length=50)
-    field_label: str = Field(..., max_length=100)
-    field_type: str = Field(..., pattern="^(text|number|date|select|boolean)$")
-    is_required: bool = False
-    default_value: Optional[str] = None
-    options: Optional[List[str]] = None
-    sort_order: int = 0
-    description: Optional[str] = None
+_ENTITY_PATTERN = "^(material|supplier|customer)$"
 
 
-class AttributeTemplateCreate(AttributeTemplateBase):
-    pass
+class QualityCheckRunRequest(BaseModel):
+    entity_type: str = Field(..., pattern=_ENTITY_PATTERN)
+    entity_ids: Optional[List[str]] = None
+    rule_ids: Optional[List[str]] = None
 
 
-class AttributeTemplateResponse(AttributeTemplateBase):
+class QualityCheckRunResponse(BaseModel):
+    batch_id: str
+    total_checked: int
+    passed: int
+    failed: int
+    skipped: int = 0  # 无数据源跳过的检查数（Phase 2 设计决策 3）
+
+
+class QualityCheckRuleResponse(BaseModel):
     id: str
-    
-    model_config = ConfigDict(from_attributes=True)
-
-
-# ========== Material Application ==========
-
-class ApplicationBase(BaseModel):
-    material_name: str = Field(..., max_length=200)
-    material_desc: Optional[str] = None
-    classification_id: str
-    material_type: MaterialType
-    attribute_values: Optional[Dict[str, Any]] = None
-    attachments: Optional[List[Dict[str, Any]]] = None
-
-
-class ApplicationCreate(ApplicationBase):
-    pass
-
-
-class ApplicationDraftSave(BaseModel):
-    id: Optional[str] = None
-    material_name: Optional[str] = None
-    material_desc: Optional[str] = None
-    classification_id: Optional[str] = None
-    material_type: Optional[MaterialType] = None
-    attribute_values: Optional[Dict[str, Any]] = None
-    attachments: Optional[List[Dict[str, Any]]] = None
-
-
-class ApplicationSubmit(BaseModel):
-    id: str
-
-
-class ApplicationApprove(BaseModel):
-    comment: Optional[str] = None
-    approved: bool = True
-
-
-class ValidationResult(BaseModel):
-    passed: bool
-    checks: List[Dict[str, Any]] = []
-    errors: List[str] = []
-
-
-class DedupResult(BaseModel):
-    is_duplicate: bool
-    confidence: float = 0.0
-    similar_materials: List[Dict[str, Any]] = []
-
-
-class ApplicationResponse(ApplicationBase):
-    id: str
-    app_no: str
-    material_code: Optional[str] = None
-    status: ApplicationStatus
-    validation_passed: bool
-    is_duplicate: bool
-    validation_result: Optional[Dict[str, Any]] = None
-    dedup_result: Optional[Dict[str, Any]] = None
-    created_by: str
-    created_by_name: Optional[str] = None
-    department: Optional[str] = None
-    created_at: datetime
-    updated_at: datetime
-    submitted_at: Optional[datetime] = None
-    admin_approved: bool
-    admin_approved_by: Optional[str] = None
-    admin_approved_at: Optional[datetime] = None
-    admin_comment: Optional[str] = None
-    dept_approved: bool
-    dept_approved_by: Optional[str] = None
-    dept_approved_at: Optional[datetime] = None
-    dept_comment: Optional[str] = None
-    
-    model_config = ConfigDict(from_attributes=True)
-
-
-# ========== Code Rule ==========
-
-class CodeRuleBase(BaseModel):
     name: str
-    pattern: str
-    prefix: Optional[str] = None
-    suffix: Optional[str] = None
-    seq_length: int = 5
-    classification_id: Optional[str] = None
+    description: Optional[str] = None
+    entity_type: str
+    rule_type: str
+    field_name: Optional[str] = None
+    standard_id: Optional[str] = None
+    severity: str
+    is_active: bool
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class QualityCheckRuleListResponse(BaseModel):
+    total: int
+    items: List[QualityCheckRuleResponse]
+
+
+class QualityCheckBatchSummaryResponse(BaseModel):
+    id: str
+    entity_type: str
+    total_entities: int
+    total_checks: int
+    passed: int
+    failed: int
+    skipped_checks: int = 0
+    rule_ids: Optional[List[str]] = None
+    triggered_by: str
+    started_at: datetime
+    finished_at: Optional[datetime] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class QualityCheckBatchListResponse(BaseModel):
+    total: int
+    items: List[QualityCheckBatchSummaryResponse]
+
+
+class QualityCheckResultResponse(BaseModel):
+    id: str
+    rule_id: str
+    batch_id: str
+    entity_id: str
+    entity_type: str
+    field_name: Optional[str] = None
+    field_value: Optional[str] = None
+    severity: str
+    message: Optional[str] = None
+    checked_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class QualityCheckResultListResponse(BaseModel):
+    total: int
+    items: List[QualityCheckResultResponse]
+
+
+class ReportRuleStat(BaseModel):
+    rule_id: str
+    rule_name: str
+    total: int
+    failed: int
+    pass_rate: float
+
+
+class ReportTopIssue(BaseModel):
+    field_name: Optional[str] = None
+    issue_count: int
+    issue_type: Optional[str] = None
+    message: Optional[str] = None
+
+
+class QualityCheckReportResponse(BaseModel):
+    batch_id: str
+    entity_type: str
+    total_entities: int
+    total_checks: int
+    passed: int
+    failed: int
+    pass_rate: float
+    by_severity: Dict[str, int]
+    by_rule: List[ReportRuleStat]
+    top_issues: List[ReportTopIssue]
+
+
+# ========== Suspected Errors (SPEC §3.3) ==========
+
+SuspectedErrorType = Literal["duplicate", "naming", "classification", "unit"]
+
+
+class SuspectedErrorDetectRequest(BaseModel):
+    entity_type: str = Field(..., pattern=_ENTITY_PATTERN)
+    error_types: Optional[List[SuspectedErrorType]] = None
+    entity_ids: Optional[List[str]] = None
+
+
+class SuspectedErrorDetectResponse(BaseModel):
+    """重检去重结果（SPEC §2.7）：新建 / 刷新 pending / 误报白名单跳过 / 实体消失自动关闭。"""
+    created: int
+    refreshed: int
+    skipped_false_positive: int
+    auto_closed: int
+    total_pending: int
+
+
+class SuspectedErrorResponse(BaseModel):
+    id: str
+    entity_type: str
+    entity_id: str
+    entity_label: Optional[str] = None
+    error_type: str
+    severity: str
+    title: str
+    description: Optional[str] = None
+    details: Optional[Dict[str, Any]] = None
+    status: str
+    resolved_by: Optional[str] = None
+    resolved_at: Optional[datetime] = None
+    resolution_note: Optional[str] = None
+    matched_entity_id: Optional[str] = None
+    detected_at: datetime
+    detected_by: Optional[str] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class SuspectedErrorListResponse(BaseModel):
+    total: int
+    items: List[SuspectedErrorResponse]
+
+
+class SuspectedErrorResolveRequest(BaseModel):
+    # resolved_by 由 JWT 提供，不接受请求体传入（SPEC §3.3）
+    status: str = Field(..., pattern="^(confirmed|resolved|false_positive)$")
+    resolution_note: Optional[str] = Field(None, max_length=2000)
+
+
+# ========== AI Governance Copilot (TC-AIG-004/009/011) ==========
+
+class TicketDecisionRequest(BaseModel):
+    opinion: Optional[str] = Field(None, max_length=2000)
+    confirmed: bool = False
+
+
+class MergeExecuteRequest(BaseModel):
+    ticket_id: str = Field(..., min_length=1, max_length=36)
+
+
+class GovernanceOwnerCreate(BaseModel):
+    role: str = Field(..., pattern="^(owner|steward|approver)$")
+    name: str = Field(..., min_length=1, max_length=100)
+    department: str = Field(..., min_length=1, max_length=100)
+    domain: str = Field(..., min_length=1, max_length=50)
+    email: str = Field(..., min_length=3, max_length=254)
     is_active: bool = True
 
 
-class CodeRuleCreate(CodeRuleBase):
-    pass
-
-
-class CodeRuleResponse(CodeRuleBase):
-    id: str
-    current_seq: int = 0
-    description: Optional[str] = None
-    
-    model_config = ConfigDict(from_attributes=True)
-
-
-# ========== 金标数据 ==========
-
-class GoldenRecordBase(BaseModel):
-    material_code: str
-    material_name: str
-    material_desc: Optional[str] = None
-    classification_id: str
-    attribute_values: Optional[Dict[str, Any]] = None
-    material_type: MaterialType
-
-
-class GoldenRecordResponse(GoldenRecordBase):
-    id: str
-    application_id: Optional[str] = None
-    classification_path: Optional[str] = None
-    status: str
-    version: int = 1
-    revision: int = 1
-    btp_published: bool = False
-    btp_published_at: Optional[datetime] = None
-    om_synced: bool = False
-    om_synced_at: Optional[datetime] = None
-    om_entity_fqn: Optional[str] = None
-    created_by: str
-    created_at: datetime
-    updated_at: datetime
-    
-    model_config = ConfigDict(from_attributes=True)
-
-
-class GoldenRecordVersionCreate(BaseModel):
-    material_name: Optional[str] = Field(None, max_length=200)
-    material_desc: Optional[str] = None
-    classification_id: Optional[str] = None
-    attribute_values: Optional[Dict[str, Any]] = None
-    material_type: Optional[MaterialType] = None
-    change_reason: str = Field(..., min_length=1, max_length=1000)
-
-
-class GoldenRecordVersionResponse(BaseModel):
-    id: str
-    golden_record_id: str
-    parent_version_id: Optional[str] = None
-    version_number: int
-    material_code: str
-    material_name: str
-    material_desc: Optional[str] = None
-    classification_id: str
-    attribute_values: Optional[Dict[str, Any]] = None
-    material_type: MaterialType
-    status: str
-    change_type: str
-    change_reason: Optional[str] = None
-    created_by: str
-    approved_by: Optional[str] = None
-    created_at: datetime
-    approved_at: Optional[datetime] = None
-    published_at: Optional[datetime] = None
-
-    model_config = ConfigDict(from_attributes=True)
-
-
-class PublishSyncTaskResponse(BaseModel):
-    id: str
-    application_id: str
-    golden_record_id: str
-    system_name: str
-    operation: str
-    status: str
-    attempt_count: int
-    max_attempts: int
-    next_retry_at: Optional[datetime] = None
-    started_at: Optional[datetime] = None
-    completed_at: Optional[datetime] = None
-    last_error: Optional[str] = None
-    request_payload: Optional[Dict[str, Any]] = None
-    response_payload: Optional[Dict[str, Any]] = None
-    created_at: datetime
-    updated_at: datetime
-
-    model_config = ConfigDict(from_attributes=True)
-
-
-# ========== Audit Log ==========
-
-class AuditLogResponse(BaseModel):
-    id: str
-    step_id: str
-    step_name: str
-    step_label: str
-    executed_by: str
-    executed_by_name: Optional[str] = None
-    executed_at: datetime
-    status: str
-    status_label: Optional[str] = None
-    details: Optional[Dict[str, Any]] = None
-    error_message: Optional[str] = None
-    
-    model_config = ConfigDict(from_attributes=True)
-
-
-# ========== Dashboard ==========
-
-class DashboardStats(BaseModel):
-    total_applications: int
-    pending_admin: int
-    pending_dept: int
-    approved: int
-    rejected: int
-    published: int
-    total_golden_records: int
-    total_classifications: int
-    recent_applications: List[ApplicationResponse] = []
-    recent_audit_logs: List[AuditLogResponse] = []
-
-
-# ========== Governance Rules ==========
-
-class GovernanceRuleResponse(BaseModel):
-    id: str
-    rule_key: str
-    rule_name: str
-    severity: str
-    category: str
-    score_penalty: int
-    is_active: bool
-    description: Optional[str] = None
-    created_at: datetime
-    updated_at: datetime
-
-    model_config = ConfigDict(from_attributes=True)
-
-
-class GovernanceRuleUpdate(BaseModel):
-    rule_name: Optional[str] = Field(None, min_length=1, max_length=200)
-    severity: Optional[str] = Field(None, pattern="^(blocking|warning)$")
-    category: Optional[str] = Field(None, min_length=1, max_length=50)
-    score_penalty: Optional[int] = Field(None, ge=0, le=100)
+class GovernanceOwnerUpdate(BaseModel):
+    role: Optional[str] = Field(None, pattern="^(owner|steward|approver)$")
+    name: Optional[str] = Field(None, min_length=1, max_length=100)
+    department: Optional[str] = Field(None, min_length=1, max_length=100)
+    domain: Optional[str] = Field(None, min_length=1, max_length=50)
+    email: Optional[str] = Field(None, min_length=3, max_length=254)
     is_active: Optional[bool] = None
-    description: Optional[str] = None

@@ -1,8 +1,8 @@
 # 主数据字段治理 SPEC（规格说明）
 
-> **版本**：v1.1
+> **版本**：v1.3
 > **日期**：2026-09-01
-> **状态**：已评审，待实施
+> **状态**：已定稿，作为实施基线
 
 ---
 
@@ -20,7 +20,7 @@
 
 | 主数据类型 | 存量数据源 | 说明 |
 |-----------|-----------|------|
-| 物料 material | `golden_records`（现有表） | 已发布金标数据，字段映射见第 4 节 |
+| 物料 material | `material_records`（本 SPEC 新增） | SAP MARA 风格存量存储，字段存 attributes JSON |
 | 供应商 supplier | `partner_records`（本 SPEC 新增） | SAP BP 风格存储，字段存 attributes JSON |
 | 客户 customer | `partner_records`（本 SPEC 新增） | 与供应商共用表，entity_type 区分 |
 
@@ -31,20 +31,150 @@ SAP 表（MARA/BUT000/LFA1/KNA1 等）在数据标准中作为字段归属元数
 - SAP 系统对接（存量数据通过导入/Mock 进入本系统）
 - 数据自动修复（只检测、报告、人工处理）
 - 数据标准变更审批流
-- **申请流程质量校验**：现有 `GovernanceRule` + `MaterialValidator`（提交申请时的同步校验）不属于本 SPEC 范围
+- **业务系统编码映射**（外部系统存量编码与金标编码的对应关系管理，对应浪潮 MDM"数据映射"能力）——后续迭代
+- **申请/审批/金标/分发流程**：不属于本系统职能（v1.3 起从代码库移除）
 
 ### 1.4 与现有系统的关系
 
-本 SPEC 是**存量数据治理的唯一一套规则体系**，与申请流程校验完全独立：
+**系统定位**：本系统只提供存量数据治理与数据质量管理服务。 数据的新增申请、审批、金标数据（GoldenData）、外部分发（BTP/OpenMetadata 发布）**不属于本系统职能**，相关代码移除列入 Phase 0（代码库当前处于迁移中间态，见第 7 章）。
 
-| | 申请流程校验（现有，保持不动） | 存量数据治理（本 SPEC） |
-|--|------------------------------|------------------------|
-| 规则定义 | `governance_rules` 表，rule_key 固化于代码 | `data_standards` + `quality_check_rules` 表，完全配置化 |
-| 数据对象 | 申请单 `material_applications` | 存量记录 `golden_records` / `partner_records` |
-| 执行时机 | 提交申请时同步执行 | 人工触发批量检测 |
-| 结果 | 校验结果随申请单返回，不持久化明细 | 检测批次 + 失败明细持久化 |
+本 SPEC 是存量数据治理的**唯一一套规则体系**：
 
-两套规则不迁移、不合并、不共享定义。存量治理功能只读写本 SPEC 定义的表。
+| | 存量数据治理（本 SPEC，本系统全部） |
+|--|------------------------------|
+| 规则定义 | `data_standards` + `quality_check_rules` 表，完全配置化 |
+| 数据对象 | 存量记录 `material_records` / `partner_records` |
+| 执行时机 | 人工触发批量检测 |
+| 结果 | 检测批次 + 失败明细持久化 |
+
+上游业务系统（SAP/PLM/采购平台等）负责数据创建与分发；本系统通过导入接收存量数据，只做检测、报告、人工处理建议。
+
+### 1.5 治理能力框架（业务属性 / 数据属性 / 管理属性）
+
+本版规范进一步明确：数据治理不是单一的“字段校验”功能，而是由三类属性共同驱动的治理能力闭环。
+
+#### 1.5.1 业务属性（Business Attribute）
+
+用于定义“字段为什么存在、属于哪个业务语义域”。
+
+- 标准主题：主数据对象是否属于物料、供应商、客户、工厂、计量、外协等业务主题
+- 标准小类：字段归属于编码、名称、分类、状态、等级等小类
+- 业务定义：字段的业务含义、约束原因、业务判定标准
+- 标准来源：字段来源于 SAP、业务规范、内部制度或行业标准
+- 业务规则：字段是否必须满足某些业务状态联动条件
+
+#### 1.5.2 数据属性（Data Attribute）
+
+用于定义“字段在技术上应当如何表达”。
+
+- 数据类型：字符串、数字、日期、枚举、布尔、金额、文本
+- 数据长度：最大长度、最小长度、对象长度限制
+- 编码规则：MATNR、LIFNR、KUNNR 等业务编码模式
+- 取值范围：枚举值、数值区间、固定值集合
+- 数据精度：小数位数、单位、转换格式
+- 数据格式：日期格式、编码格式、货币格式
+
+#### 1.5.3 管理属性（Management Attribute）
+
+用于定义“字段谁负责、权限如何控制、如何使用”。
+
+- 标准定义人：字段标准的创建/维护人
+- 标准使用人：业务使用者、数据录入人、分析人员
+- 应用部门：字段使用方（采购、生产、财务、仓储等）
+- 权限范围：谁有读权限、谁有维护权限、谁有审批权限
+- 使用系统：字段可用于哪个系统或报表
+- 使用期限：字段生命周期、失效期、升级替换策略
+
+#### 1.5.4 质量特性维度（Quality Characteristics）
+
+数据质量不再只看“合法性”，要覆盖以下统一维度：
+
+| 维度 | 定义 | 核心问题 |
+|------|------|----------|
+| 完整性 | 数据是否完整 | 是否存在必填字段缺失、数据缺失 |
+| 准确性 | 数据是否真实准确 | 是否与真实业务事实一致 |
+| 一致性 | 数据是否跨系统/跨字段一致 | 同一对象不同来源是否冲突 |
+| 及时性 | 数据是否及时更新 | 是否滞后、是否过期 |
+| 唯一性 | 数据是否唯一 | 是否重复、是否存在同义重复 |
+| 有效性 | 数据是否符合业务规则 | 是否属于合法值域/规则定义 |
+| 规范性 | 数据是否符合标准格式 | 是否遵循编码、命名、长度等规范 |
+| 可追溯性 | 数据是否可解释、可审计 | 变更来源、审批依据、责任归属是否可证 |
+
+#### 1.5.5 核心治理问题与规则映射
+
+| 维度 | 错误表达 | 治理动作 |
+|------|----------|----------|
+| 完整性 | 缺失值、空值、字段为空 | 强制必填校验、缺失告警 |
+| 准确性 | 数据与事实不符 | 标准校验、业务比对、异常识别 |
+| 一致性 | 同一对象不同系统有冲突 | 跨表对账、字段联动校验 |
+| 及时性 | 数据未更新、过期 | 时效性规则、周期巡检 |
+| 唯一性 | 重复、近重复 | 标识去重、疑似重复审核 |
+| 有效性 | 非法值、超范围 | 值域/枚举校验、业务状态校验 |
+| 规范性 | 命名/长度/编码不标准 | 格式规则、命名模板约束 |
+| 可追溯性 | 缺少责任人、审批证据 | 审计记录、审批意见模板、责任归属 |
+
+#### 1.5.6 与数据模型和规则的承接
+
+本节框架必须落到第 2 章模型，否则只是概念摆设。承接关系如下：
+
+**管理属性进表**：DataStandard 新增三列——`owner`（标准定义人）、`standard_source`（标准来源：sap/industry/internal）、`dept_scope`（应用部门，JSON 数组）。业务属性整体进 `business_attrs` JSON 列（标准主题/标准小类等展示型元数据）；业务定义/业务规则由 `description` 与规则引擎承载，不拆独立列。
+
+**质量维度与规则类型映射**：
+
+| 质量维度 | 对应规则类型 | v1 是否覆盖 |
+|---------|-------------|------------|
+| 完整性 | null_check | ✓ |
+| 唯一性 | unique_check / duplicate_check | ✓ |
+| 有效性 | range_check | ✓ |
+| 规范性 | format_check / length_check | ✓ |
+| 准确性 | 无（需与外部事实源比对） | ✗ 后续迭代 |
+| 一致性 | 无（需跨系统对账） | ✗ 后续迭代 |
+| 及时性 | 无（需业务时效定义） | ✗ 后续迭代 |
+| 可追溯性 | 由 audit_logs + 检测批次承担，不设规则类型 | 部分（审计已有，血缘无） |
+
+不在 v1 覆盖的维度不假装覆盖：检测报告按上述四种维度归类统计，报告里不出现空维度。
+
+### 1.6 疑似重复判定与审核意见标准化
+
+本版新增对“相似重复”数据的治理流程要求：
+
+1. 发现相似项后，系统先生成候选重复列表，并计算相似度分数。
+2. 用户或数据管理员在审核页面确认：同意重复、拒绝、待人工补充、误报。
+3. 审核意见必须标准化输出，便于后续归档和分析。
+4. 对被判定为重复的记录，系统保留证据：候选编码、名称、相似率、对应规则、责任人与判定理由。
+
+标准审核意见模板：
+
+- 同意：该数据与已存在记录重复，按标准合并/去重。
+- 拒绝：该数据为合法业务差异，不属于重复。
+- 误报：当前规则对该数据判定存在偏差，需关闭该问题。
+- 待补充：需进一步核实，补充业务上下文后再判定。
+
+#### 1.6.1 规范化审核意见示例
+
+```
+审核结论：共发现以下 17 条疑似重复数据，现进行确认
+
+相似度  规则编码    物料描述                          对应关系          处理建议
+95%     11002422585  低压气动阀门 Z642H 1.6MPa C DN50   可能重复       确认并合并
+87%     11002422586  低压气动阀门 Z642Y 1.6MPa C DN150  可能重复       确认并合并
+83%     11002422587  低压气动阀门 Z642Y 1.6MPa C DN200  可能重复       确认并合并
+...
+```
+
+#### 1.6.2 审核结论标准流程
+
+- 若用户确认"重复"，则自动进入待合并/待处理工单，记录证据
+- 若用户确认"非重复"，则加入误报白名单，避免重复召回
+- 若用户最终未确认，则保留为 pending，并要求补充说明
+
+#### 1.6.3 与 2.7 状态机的对接
+
+- "同意/确认重复" → `confirmed`；修复完成 → `resolved`
+- "拒绝/误报" → `false_positive`，并进入**误报白名单**：重检时同 `(entity_id, matched_entity_id, error_type)` 已为 false_positive 的不再生成新记录（对应 2.7 重检去重策略的补充条款）
+- "待补充" → 保持 `pending`，用 `resolution_note` 记录待补充说明，**不新增状态**（状态机保持 4 态，避免状态膨胀）
+- 审核意见模板作为前端处理对话框的**预设文案**（见 6.4），用户可改
+- "待合并工单"在 v1 简化为 confirmed 记录 + details 证据链，独立工单系统不在范围
 
 ---
 
@@ -79,9 +209,16 @@ class DataStandard(Base):
     pattern = Column(String(200), nullable=True)  # 正则（格式校验）
     unique = Column(Boolean, default=False)
 
+    # 业务属性进 JSON（标准主题/标准小类等展示型元数据；业务定义由 description 承载，业务规则由规则引擎承载）
+    business_attrs = Column(JSON, nullable=True)  # {"standard_topic": "...", "standard_subcategory": "..."}
+
     # 元数据
     description = Column(Text, nullable=True)
     sap_field_desc = Column(Text, nullable=True)
+    # 管理属性（承接 1.5.6）
+    owner = Column(String(50), nullable=True)          # 标准定义人
+    standard_source = Column(String(20), nullable=True) # sap / industry / internal
+    dept_scope = Column(JSON, nullable=True)            # 应用部门列表
     created_at = Column(DateTime, default=_now_utc)
     updated_at = Column(DateTime, default=_now_utc, onupdate=_now_utc)
 
@@ -90,10 +227,10 @@ class DataStandard(Base):
     )
 ```
 
-**v1.1 修订**：
+**设计说明**：
 
-- 唯一约束从 `(entity_type, field_name)` 扩展为 `(entity_type, sap_table, field_name)`——同一字段名可出现在多张 SAP 表（如 MAKTX 同时在 MARA 与 MAKT），两键约束会互相挤掉
-- 物料编码 MATNR 预置正则改为 `^M\d{5}$`，与现有 `CodeGenerator`（前缀 M + 5 位序列）一致；SAP 真实接入后按实际编码规则调整
+- 唯一约束含 `sap_table`，即 `(entity_type, sap_table, field_name)`——同一字段名可出现在多张 SAP 表（如 MAKTX 同时在 MARA 与 MAKT），缺 sap_table 会互相挤掉
+- 物料编码 MATNR 预置正则 `^M\d{5}$`（前缀 M + 5 位序列）；SAP 真实接入后按实际编码规则调整
 
 **示例数据**：
 
@@ -109,7 +246,32 @@ class DataStandard(Base):
 | customer | KNA1 | KUNNR | 客户编号 | string | true | ^[0-9]{10}$ |
 | customer | KNA1 | NAME1 | 客户名称 | string | true | null |
 
-### 2.2 供应商/客户存量记录（PartnerRecord）【v1.1 新增】
+### 2.2 物料存量记录（MaterialRecord）
+
+物料存量数据不再依赖申请流程的 `golden_records`（已随申请链路移除），新建 MARA 风格存量表：
+
+```python
+class MaterialRecord(Base):
+    """物料主数据存量记录（SAP MARA 风格）"""
+    __tablename__ = "material_records"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    material_code = Column(String(50), nullable=False, index=True)   # MATNR
+    material_name = Column(String(200), nullable=False)              # MAKTX 冗余存储
+    attributes = Column(JSON, nullable=False, default=dict)          # SAP 字段名 → 值（MTART/MEINS/MATKL/BRGEW/NTGEW/GEWEI 等）
+    source_system = Column(String(50), nullable=False, default="mock_sap")
+    status = Column(String(20), nullable=False, default="active")    # active / inactive
+    created_at = Column(DateTime, default=_now_utc)
+    updated_at = Column(DateTime, default=_now_utc, onupdate=_now_utc)
+
+    __table_args__ = (
+        UniqueConstraint("material_code", name="uq_material_code"),
+    )
+```
+
+设计要点与 `partner_records` 对称：`material_name` 冗余 MAKTX 供列表与重复检测高频访问；`attributes` 键名与数据标准 `field_name` 一致，检测引擎直接按键取值。
+
+### 2.3 供应商/客户存量记录（PartnerRecord）
 
 供应商/客户主数据当前在系统中没有任何存储，新增 BP 风格存量表：
 
@@ -139,7 +301,7 @@ class PartnerRecord(Base):
 - `attributes` 以 SAP 字段名（NAME_ORG1/STREET/CITY1/POST_CODE1/COUNTRY/ZTERM 等）为键，与数据标准的 `field_name` 一致，检测引擎直接按键取值，无需二次映射
 - `partner_name` 冗余 NAME1：列表展示与重复检测高频访问，避免逐行解析 JSON
 
-### 2.3 质量检测规则（QualityCheckRule）
+### 2.4 质量检测规则（QualityCheckRule）
 
 ```python
 class QualityCheckRule(Base):
@@ -169,7 +331,7 @@ class RuleType(str, PyEnum):
     DUPLICATE_CHECK = "duplicate_check"  # 模糊相似（产出进入疑似错误流程）
 ```
 
-**v1.1 修订**：删除 `custom_check`（自定义 SQL 表达式）——可配置 SQL 等于开放注入口子，违反项目安全约束。后续如需自定义规则，用受限表达式白名单另做设计。
+**设计约束**：不提供 `custom_check`（自定义 SQL 表达式）——可配置 SQL 等于开放注入口子，违反项目安全约束。后续如需自定义规则，用受限表达式白名单另做设计。
 
 `unique_check` 与 `duplicate_check` 的区别：前者精确相等判重（如编码重复，直接出结果）；后者相似度判重（如名称相似，产出进疑似错误，需人工确认）。
 
@@ -189,9 +351,9 @@ class RuleType(str, PyEnum):
 {"field": "MAKTX", "similarity_threshold": 0.8, "message": "检测到相似物料描述"}
 ```
 
-### 2.4 检测批次（QualityCheckBatch）【v1.1 新增】
+### 2.5 检测批次（QualityCheckBatch）
 
-v1.0 的 `batch_id` 是散在结果上的字段，没有批次主表，报告统计无从取数。新增批次表：
+每次检测生成一条批次记录，承载报告统计：
 
 ```python
 class QualityCheckBatch(Base):
@@ -210,9 +372,9 @@ class QualityCheckBatch(Base):
     finished_at = Column(DateTime, nullable=True)
 ```
 
-### 2.5 检测结果（QualityCheckResult）
+### 2.6 检测结果（QualityCheckResult）
 
-**v1.1 修订：只持久化未通过项。** v1.0 连通过项都存，1000 实体 × 50 规则全量检测一次写入 5 万行，跑十次就是 50 万行。通过项不写结果表，仅计入批次统计（`passed` 数）。
+**只持久化未通过项。** 若连通过项都存，1000 实体 × 50 规则全量检测一次写入 5 万行，跑十次就是 50 万行。通过项不写结果表，仅计入批次统计（`passed` 数）。
 
 ```python
 class QualityCheckResult(Base):
@@ -231,7 +393,7 @@ class QualityCheckResult(Base):
     checked_at = Column(DateTime, default=_now_utc, index=True)
 ```
 
-### 2.6 疑似错误（SuspectedError）
+### 2.7 疑似错误（SuspectedError）
 
 ```python
 class SuspectedError(Base):
@@ -253,6 +415,7 @@ class SuspectedError(Base):
     resolved_by = Column(String(50), nullable=True)
     resolved_at = Column(DateTime, nullable=True)
     resolution_note = Column(Text, nullable=True)
+    matched_entity_id = Column(String(36), nullable=True, index=True)  # 重复类错误的疑似匹配实体 ID（误报白名单用）
 
     detected_at = Column(DateTime, default=_now_utc, index=True)
     detected_by = Column(String(50), nullable=True)
@@ -260,13 +423,14 @@ class SuspectedError(Base):
 
 **错误类型**：duplicate（重复）、naming（命名不规范）、classification（分类错误）、unit（计量单位异常）。
 
-**重检去重策略【v1.1 新增】**：
+**重检去重策略**：
 
 - 同 `(entity_id, error_type)` 存在 `status=pending` 记录时，更新该记录（刷新 details/detected_at），不新插
 - `confirmed/resolved/false_positive` 的记录不动
+- **误报白名单**：同 `(entity_id, matched_entity_id, error_type)` 已为 false_positive 的，重检时不再生成新记录（对应 1.6.3）。两键 `(entity_id, error_type)` 会把该实体所有匹配对全拉黑，过宽；matched_entity_id 粒度到单个组合对
 - 实体已不存在的 pending 记录，自动关闭：`status=resolved`，`resolution_note="实体已删除/失效，自动关闭"`
 
-**状态机【v1.1 新增】**：
+**状态机**：
 
 ```
 pending ──确认是错误──> confirmed ──修复完成──> resolved
@@ -278,11 +442,13 @@ pending ──确认是错误──> confirmed ──修复完成──> resolve
 - resolved：已处理完毕
 - false_positive：判定为误报
 
+**处置建议（参考浪潮 MDM 停用语义）**：疑似错误 details 给出建议处置动作（如重复数据给出"建议保留 X / 停用 Y"）。处置一律人工执行，系统不自动停用或删除任何存量记录；停用优先于删除。
+
 ---
 
 ## 3. API 接口设计
 
-### 3.0 权限与审计【v1.1 新增】
+### 3.0 权限与审计
 
 | 操作 | user001 | dept001 | data001 | admin001 |
 |------|---------|---------|---------|----------|
@@ -390,7 +556,7 @@ entity_ids 不传检测全部；rule_ids 不传使用所有启用规则。响应
 
 #### GET /api/suspected-errors
 
-（v1.0 为 `/list`，按 REST 修正为资源本身。）参数：`entity_type`、`error_type`、`status`、`skip`/`limit`。
+参数：`entity_type`、`error_type`、`status`、`skip`/`limit`。
 
 #### POST /api/suspected-errors/{id}/resolve（data/admin）
 
@@ -405,7 +571,7 @@ status 仅允许 confirmed/resolved/false_positive；`resolved_by` 取当前登�
 
 ---
 
-## 4. 字段访问层与数据源映射【v1.1 新增】
+## 4. 字段访问层与数据源映射
 
 检测引擎不直接查各实体表，统一走字段访问层，屏蔽三实体存储差异：
 
@@ -415,16 +581,13 @@ class EntityFieldAccessor:
     def list_entities(self, entity_type: str, entity_ids: list[str] | None = None) -> list
 ```
 
-### 4.1 物料字段映射（golden_records）
+### 4.1 物料字段映射（material_records）
 
 | SAP 字段 | 数据源 | 说明 |
 |---------|--------|------|
-| MATNR | golden_records.material_code | 现有编码（M + 5 位） |
-| MAKTX | golden_records.material_name | |
-| 长描述 | golden_records.material_desc | |
-| MATKL | golden_records.classification_path | 分类路径 |
-| MTART | golden_records.material_type | 枚举 |
-| 扩展属性 | golden_records.attribute_values JSON | 键名需与数据标准 field_name 一致 |
+| MATNR | material_records.material_code | 冗余列 |
+| MAKTX | material_records.material_name | 冗余列 |
+| MTART/MEINS/MATKL/BRGEW/NTGEW/GEWEI | material_records.attributes JSON | 键名与数据标准 field_name 一致 |
 | WERKS/EKGRP/LGORT | 无数据源 | 工厂/采购/库存视图字段：标准可定义；检测时记"数据源缺失"并跳过 |
 
 ### 4.2 供应商/客户字段
@@ -433,7 +596,7 @@ class EntityFieldAccessor:
 
 ---
 
-## 5. 检测执行语义【v1.1 新增】
+## 5. 检测执行语义
 
 1. **run 流程**：按 entity_type 取实体清单（可按 entity_ids 过滤）→ 逐规则逐实体执行 → 批次表写统计 → 失败项写结果表，同一事务提交
 2. **同步上限**：v1 同步执行，单次限 5000 实体；超出返回 400 提示分批，后台任务化留后续迭代（复用 publish_sync_tasks 模式）
@@ -470,20 +633,31 @@ class EntityFieldAccessor:
 
 - 状态筛选（pending/confirmed/resolved/false_positive）+ 实体类型/错误类型筛选
 - 疑似错误表格：实体、错误类型、严重程度、标题、状态、检测时间
-- 处理对话框：状态选择、处理说明；details 展开显示相似实体列表
+- 处理对话框：状态选择、处理说明（预填 1.6 审核意见模板，用户可改）；details 展开显示相似实体列表与处置建议（保留/停用）
 
 ---
 
 ## 7. 实施计划
 
+### Phase 0：申请链路移除收尾（1-2 天）
+
+代码库当前处于迁移中间态：模型已收缩为 4 张表（data_standards / material_records / partner_records / audit_logs），但 api 路由、部分服务与前端仍残留申请链路引用。收尾内容：
+
+1. 移除 applications / golden_records / governance_rules / classifications / metadata_governance 等申请链路 API 路由与前端页面路由
+2. 移除 code_generator / material_validator / btp_mock / openmetadata_sync 服务与发布同步任务
+3. 保留并改造 duplicate_detector（去除对已删 crud 的依赖）供 Phase 3 复用；audit_service 保留
+4. 更新 init_db、e2e 脚本与前端导航
+
+**验收**：后端启动无 ImportError；pytest 全绿；前端 lint/tsc/build 零错误；代码库无申请/审批/金标/分发残留引用。
+
 ### Phase 1：存量存储 + 数据标准管理（3 天）
 
-1. PartnerRecord 模型 + init_db 建表 + Mock 种子（供应商/客户各 ≥ 20 条，含故意脏数据供检测演示）
-2. DataStandard 模型 + 种子数据（附录字段，正则与现有 CodeGenerator 对齐）
+1. MaterialRecord + PartnerRecord 模型 + init_db 建表 + Mock 种子（物料/供应商/客户各 ≥ 20 条，含故意脏数据供检测演示）
+2. DataStandard 模型 + 种子数据（附录字段）
 3. CRUD API + 权限矩阵 + 审计
 4. 前端数据标准管理页
 
-**验收**：三实体标准可增删改查；供应商/客户 Mock 数据入库；user/dept 角色写操作返回 403；写操作有审计记录。
+**验收**：三实体标准可增删改查；物料/供应商/客户 Mock 数据入库；user/dept 角色写操作返回 403；写操作有审计记录。
 
 ### Phase 2：数据质量检测（3-4 天）
 
@@ -510,7 +684,7 @@ class EntityFieldAccessor:
 
 **验收**：CSV 导入成功；格式错误行返回明细报告。
 
-**总工期：9-12 天**（供应商/客户存量存储与导入为 v1.1 新增工作量）。
+**总工期：10-14 天**（含 Phase 0 申请链路移除收尾）。
 
 ---
 
@@ -526,27 +700,45 @@ class EntityFieldAccessor:
 
 ---
 
-## 9. 附录：SAP 核心字段
+## 9. 与浪潮 MDM V2.0 产品白皮书的对照
 
-### 9.1 SAP 物料主数据核心字段
+评审参照《浪潮主数据管理 V2.0 产品白皮书》（27 页）校验本 SPEC 的功能设计取向：
+
+| 白皮书能力 | 本 SPEC 对应 | 结论 |
+|-----------|-------------|------|
+| 基础字典全生命周期（申请→审批→维护→变更→日志） | 本系统只承接"维护 + 日志"（数据标准 CRUD + audit_logs）；申请/审批属上游系统，变更审批不做（1.3） | 定位差异：治理面收窄，明确接受 |
+| 清洗规则 = 临界相似度 + 清洗依据字段 | duplicate_check 的 similarity_threshold + field | 一致 |
+| 清洗规则中的合并规则 | 不做自动合并；疑似错误人工处理 + details 处置建议 | 定位差异：只检测不修复 |
+| 数据清洗对重复数据做停用处理 | 处置建议采用"停用优先于删除"语义，人工执行 | 借鉴 |
+| 数据映射（业务系统编码 ↔ 标准编码） | 无 | 明确列入 1.3 后续迭代，避免缺位 |
+| 物资编码申请保存时自动查重 | 申请流程已移除；存量重复检测由 duplicate_check 规则承接 | 已覆盖 |
+| 按岗位权限查询字典 | 3.0 权限矩阵 | 印证 |
+| 主数据同步 / 适配器 / 字段映射下发 | 无——分发（BTP/OM 发布）已随申请链路移出系统职能（1.3） | 不做；如需分发再立 SPEC |
+| 私有/公有主数据分级管理 | 无 | 不做（单一企业演示场景） |
+
+---
+
+## 10. 附录：SAP 核心字段
+
+### 10.1 SAP 物料主数据核心字段
 
 | SAP 表 | 字段 | 描述 | 本系统数据源 |
 |--------|------|------|-------------|
-| MARA | MATNR | 物料编码 | golden_records.material_code |
-| MARA | MAKTX | 物料描述 | golden_records.material_name |
-| MARA | MEINS | 基本计量单位 | attribute_values |
-| MARA | MATKL | 物料组 | classification_path |
-| MARA | MTART | 物料类型 | material_type |
-| MARA | BRGEW | 毛重 | attribute_values |
-| MARA | NTGEW | 净重 | attribute_values |
-| MARA | GEWEI | 重量单位 | attribute_values |
+| MARA | MATNR | 物料编码 | material_records.material_code |
+| MARA | MAKTX | 物料描述 | material_records.material_name |
+| MARA | MEINS | 基本计量单位 | attributes |
+| MARA | MATKL | 物料组 | attributes |
+| MARA | MTART | 物料类型 | attributes |
+| MARA | BRGEW | 毛重 | attributes |
+| MARA | NTGEW | 净重 | attributes |
+| MARA | GEWEI | 重量单位 | attributes |
 | MARC | WERKS | 工厂 | 无数据源（检测跳过） |
 | MARC | EKGRP | 采购组 | 无数据源（检测跳过） |
 | MARC | DISMM | MRP 参数文件 | 无数据源（检测跳过） |
 | MARD | LGORT | 存储位置 | 无数据源（检测跳过） |
 | MAKT | SPRAS | 语言代码 | 无数据源（检测跳过） |
 
-### 9.2 SAP BP 核心字段
+### 10.2 SAP BP 核心字段
 
 | SAP 表 | 字段 | 描述 | 本系统数据源 |
 |--------|------|------|-------------|
@@ -573,9 +765,12 @@ class EntityFieldAccessor:
 
 ---
 
-## 10. 版本历史
+## 11. 版本历史
 
 | 版本 | 日期 | 变更内容 |
 |------|------|----------|
 | v1.0 | 2026-08-23 | 初始版本 |
 | v1.1 | 2026-09-01 | 评审修订：保留供应商/客户并新增 PartnerRecord 存量存储；明确本 SPEC 为存量治理唯一规则体系（与申请流程 GovernanceRule 独立）；删除 custom_check；新增检测批次表、结果只存失败项；新增字段访问层与映射表；补权限矩阵、审计、重检去重、状态机；修唯一约束与 MATNR 正则；API 命名修正 |
+| v1.2 | 2026-09-01 | 参照浪潮 MDM V2.0 白皮书与治理框架补充：1.5 治理能力框架收敛为模型承接（DataStandard 增加 owner/standard_source/dept_scope 管理属性列 + 质量维度与规则类型映射，v1 覆盖完整性/唯一性/有效性/规范性四维度）；1.6 疑似重复审核标准化对接状态机（误报白名单防重复召回、审核意见模板进前端、不加新状态）；业务系统编码映射明确列入后续迭代；疑似错误处置建议采用停用语义（人工执行）；新增第 9 节白皮书对照 |
+| v1.3 | 2026-09-01 | 定稿基线：正文清理过程性修订标注（版本痕迹归入本表），状态改为已定稿，进入实施 |
+| v1.3 | 2026-09-01 | 系统定位收敛：本系统只做存量数据治理与数据质量管理服务，申请/审批/金标/分发（BTP/OpenMetadata 发布）移出代码库；物料存量数据源由 golden_records 改为新建 material_records（MARA 风格，与 partner_records 对称）；DataStandard 属性方案合并：管理属性 owner/standard_source/dept_scope 三结构化列 + 业务属性 business_attrs JSON；**定稿基线**：正文清理过程性修订标注，新增 Phase 0 申请链路移除收尾任务，对照表同步定位变更 |

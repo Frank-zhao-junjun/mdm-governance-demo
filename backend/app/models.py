@@ -1,359 +1,366 @@
-"""SQLAlchemy models for Material Master Data Governance."""
+"""SQLAlchemy models for the stock-data governance service (SPEC v1.3).
+
+Scope: data standards + quality checks over stock records only.
+Application/approval/golden-record/publish flows were removed from this
+codebase (SPEC §1.4) — upstream systems own data creation and distribution.
+"""
 import uuid
 from datetime import datetime, timezone
-
-def _now_utc():
-    return datetime.now(timezone.utc)
 from enum import Enum as PyEnum
 
-from sqlalchemy import Column, String, Integer, Boolean, Text, DateTime, ForeignKey, JSON, Enum, UniqueConstraint
-from sqlalchemy.orm import relationship
+from sqlalchemy import (
+    Column, String, Integer, Boolean, Text, DateTime, Float, ForeignKey,
+    JSON, Enum, UniqueConstraint,
+)
 
 from app.core.database import Base
 
 
+def _now_utc():
+    return datetime.now(timezone.utc)
+
+
 # ========== Enums ==========
 
-class MaterialType(str, PyEnum):
-    RAW = "raw"
-    SEMI = "semi"
-    FINISHED = "finished"
-    AUXILIARY = "auxiliary"
-    SPARE = "spare"
-
-
-class ApplicationStatus(str, PyEnum):
-    DRAFT = "draft"
-    PENDING_ADMIN = "pending_admin"
-    PENDING_DEPT = "pending_dept"
-    APPROVED = "approved"
-    PUBLISHING = "publishing"
-    REJECTED = "rejected"
-    PUBLISHED = "published"
-
-
-class GoldenRecordVersionStatus(str, PyEnum):
-    PENDING_APPROVAL = "pending_approval"
-    APPROVED = "approved"
-    PUBLISHED = "published"
-    INVALIDATED = "invalidated"
-    ROLLED_BACK = "rolled_back"
-
-
-class GoldenRecordStatus(str, PyEnum):
-    ACTIVE = "active"
-    OBSOLETE = "obsolete"
-
-
 class StepName(str, PyEnum):
-    CREATE_DRAFT = "create_draft"
-    SAVE_DRAFT = "save_draft"
-    SUBMIT = "submit"
-    VALIDATE = "validate"
-    DEDUP_CHECK = "dedup_check"
-    CODE_GENERATE = "code_generate"
-    ADMIN_APPROVE = "admin_approve"
-    DEPT_APPROVE = "dept_approve"
-    CREATE_GR = "create_gr"
-    PUBLISH_BTP = "publish_btp"
-    SYNC_OM = "sync_om"
-    OM_TEST = "om_test"
-    REVOKE = "revoke"
-    EDIT = "edit"
-    REVISE = "revise"
+    """Audit step names for governance write operations (SPEC §3.0)."""
+    STANDARD_CREATE = "standard_create"
+    STANDARD_UPDATE = "standard_update"
+    STANDARD_DELETE = "standard_delete"
+    QUALITY_RUN = "quality_run"
+    ERROR_DETECT = "error_detect"
+    ERROR_RESOLVE = "error_resolve"
+    DATA_IMPORT = "data_import"
 
 
-class RuleSeverity(str, PyEnum):
-    BLOCKING = "blocking"
-    WARNING = "warning"
+class RuleType(str, PyEnum):
+    """质量检测规则类型（SPEC §2.4）。无 custom_check：可配置 SQL 即注入口子。"""
+    NULL_CHECK = "null_check"
+    FORMAT_CHECK = "format_check"
+    RANGE_CHECK = "range_check"
+    LENGTH_CHECK = "length_check"
+    UNIQUE_CHECK = "unique_check"
+    DUPLICATE_CHECK = "duplicate_check"
+
+
+class TicketStatus(str, PyEnum):
+    """AI 治理工单状态（TC-AIG-002）。"""
+    DRAFT = "draft"
+    PENDING = "pending"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+    EXECUTING = "executing"
+    DONE = "done"
+    FAILED = "failed"
+
+
+class EscalationLevel(str, PyEnum):
+    """工单 SLA 升级层级（TC-AIG-007）。"""
+    NONE = "none"
+    DEPT_HEAD = "dept_head"
+    COMMITTEE = "committee"
 
 
 # ========== Models ==========
 
-class MaterialClassification(Base):
-    """物料分类（三级：大类 + 中类 + 小类）"""
-    __tablename__ = "material_classifications"
-    
+class DataStandard(Base):
+    """数据标准定义（存量治理唯一规则体系，SPEC §2.1）"""
+    __tablename__ = "data_standards"
+
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    parent_id = Column(String(36), ForeignKey("material_classifications.id"), nullable=True)
-    code = Column(String(10), unique=True, nullable=False, index=True)
-    name = Column(String(100), nullable=False)
-    level = Column(Integer, nullable=False)  # 1=大类, 2=中类, 3=小类
-    is_active = Column(Boolean, default=True)
+
+    # 实体信息
+    entity_type = Column(String(50), nullable=False, index=True)  # material / supplier / customer
+    sap_table = Column(String(50), nullable=True)  # MARA / BUT000 / LFA1 / KNA1
+    field_name = Column(String(100), nullable=False)  # MATNR / MAKTX / NAME1 等
+    field_label = Column(String(200), nullable=False)  # 字段中文标签
+
+    # 数据属性（结构化列，SPEC §1.5.2）
+    data_type = Column(String(50), nullable=False)  # string / number / date / enum / boolean / amount / text
+    max_length = Column(Integer, nullable=True)
+    min_value = Column(Float, nullable=True)
+    max_value = Column(Float, nullable=True)
+    enum_values = Column(JSON, nullable=True)  # ["A", "B", "C"]
+
+    # 校验规则
+    required = Column(Boolean, default=False)
+    pattern = Column(String(200), nullable=True)  # 正则（格式校验）
+    unique = Column(Boolean, default=False)
+
+    # 业务属性（展示型元数据进 JSON，SPEC §1.5 承接）
+    business_attrs = Column(JSON, nullable=True)  # {"standard_topic": "...", "standard_subcategory": "..."}
+    # 管理属性（结构化列，SPEC §1.5 承接）
+    owner = Column(String(50), nullable=True)            # 标准定义人
+    standard_source = Column(String(20), nullable=True)  # sap / industry / internal
+    dept_scope = Column(JSON, nullable=True)             # 应用部门列表
+
+    # 元数据
     description = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=_now_utc)
-    updated_at = Column(DateTime, default=_now_utc, onupdate=_now_utc)
-    
-    parent = relationship("MaterialClassification", remote_side=[id], back_populates="children")
-    children = relationship("MaterialClassification", back_populates="parent")
-    templates = relationship("AttributeTemplate", back_populates="classification")
-
-
-class AttributeTemplate(Base):
-    """属性模板（按分类定义字段）"""
-    __tablename__ = "attribute_templates"
-    
-    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    classification_id = Column(String(36), ForeignKey("material_classifications.id"), nullable=False)
-    field_name = Column(String(50), nullable=False)
-    field_label = Column(String(100), nullable=False)
-    field_type = Column(String(20), nullable=False)  # text, number, date, select, boolean
-    is_required = Column(Boolean, default=False)
-    default_value = Column(String(200), nullable=True)
-    options = Column(JSON, nullable=True)  # 下拉选项 ["选项A", "选项B"]
-    sort_order = Column(Integer, default=0)
-    description = Column(Text, nullable=True)
-    
-    classification = relationship("MaterialClassification", back_populates="templates")
-
-
-class MaterialApplication(Base):
-    """物料申请单"""
-    __tablename__ = "material_applications"
-    
-    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    app_no = Column(String(20), unique=True, nullable=False, index=True)  # 申请编号 SQ-2026-00001
-    
-    # 基本信息
-    material_name = Column(String(200), nullable=False)
-    material_desc = Column(Text, nullable=True)
-    classification_id = Column(String(36), ForeignKey("material_classifications.id"), nullable=False)
-    material_type = Column(Enum(MaterialType), nullable=False)
-    
-    # 属性值（JSON存储动态字段）
-    attribute_values = Column(JSON, nullable=True)
-    attachments = Column(JSON, nullable=True)
-    
-    # 编码
-    material_code = Column(String(50), nullable=True, index=True)
-    code_rule_id = Column(String(36), nullable=True)
-    
-    # 状态
-    status = Column(Enum(ApplicationStatus), default=ApplicationStatus.DRAFT)
-    
-    # 质量校验结果
-    validation_result = Column(JSON, nullable=True)
-    validation_passed = Column(Boolean, default=False)
-    
-    # 重复预检结果
-    dedup_result = Column(JSON, nullable=True)
-    is_duplicate = Column(Boolean, default=False)
-    
-    # 申请人信息
-    created_by = Column(String(50), nullable=False)
-    created_by_name = Column(String(100), nullable=True)
-    department = Column(String(50), nullable=True)
-    created_at = Column(DateTime, default=_now_utc)
-    updated_at = Column(DateTime, default=_now_utc, onupdate=_now_utc)
-    submitted_at = Column(DateTime, nullable=True)
-    
-    # 审批信息
-    admin_approved_by = Column(String(50), nullable=True)
-    admin_approved_at = Column(DateTime, nullable=True)
-    admin_approved = Column(Boolean, default=False)
-    admin_comment = Column(Text, nullable=True)
-    
-    dept_approved_by = Column(String(50), nullable=True)
-    dept_approved_at = Column(DateTime, nullable=True)
-    dept_approved = Column(Boolean, default=False)
-    dept_comment = Column(Text, nullable=True)
-
-    # 发布信息
-    published_at = Column(DateTime, nullable=True)
-    
-    # 发布信息
-    published_at = Column(DateTime, nullable=True)
-    
-    # 关联
-    classification = relationship("MaterialClassification")
-    golden_record = relationship("GoldenRecord", back_populates="application", uselist=False)
-    audit_logs = relationship("AuditLog", back_populates="application", order_by="AuditLog.executed_at")
-
-
-class CodeRule(Base):
-    """编码规则"""
-    __tablename__ = "code_rules"
-    
-    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    name = Column(String(100), nullable=False)
-    pattern = Column(String(200), nullable=False)  # 编码模板：{大类}-{小类}-{流水}
-    prefix = Column(String(10), nullable=True)
-    suffix = Column(String(10), nullable=True)
-    current_seq = Column(Integer, default=0)
-    seq_length = Column(Integer, default=5)
-    classification_id = Column(String(36), ForeignKey("material_classifications.id"), nullable=True)
-    is_active = Column(Boolean, default=True)
-    description = Column(Text, nullable=True)
-
-
-class GovernanceRule(Base):
-    """Configurable data governance rule policy for validator."""
-    __tablename__ = "governance_rules"
-
-    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    rule_key = Column(String(100), unique=True, nullable=False, index=True)
-    rule_name = Column(String(200), nullable=False)
-    severity = Column(Enum(RuleSeverity), nullable=False, default=RuleSeverity.BLOCKING)
-    category = Column(String(50), nullable=False, default="data_quality")
-    score_penalty = Column(Integer, nullable=False, default=20)
-    is_active = Column(Boolean, nullable=False, default=True)
-    description = Column(Text, nullable=True)
+    sap_field_desc = Column(Text, nullable=True)
     created_at = Column(DateTime, default=_now_utc)
     updated_at = Column(DateTime, default=_now_utc, onupdate=_now_utc)
 
-
-class GoldenRecord(Base):
-    """物料主数据 金标数据"""
-    __tablename__ = "golden_records"
-    
-    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    application_id = Column(String(36), ForeignKey("material_applications.id"), unique=True)
-    
-    # 编码
-    material_code = Column(String(50), unique=True, nullable=False, index=True)
-    material_name = Column(String(200), nullable=False)
-    material_desc = Column(Text, nullable=True)
-    
-    # 分类
-    classification_id = Column(String(36), ForeignKey("material_classifications.id"), nullable=False)
-    classification_path = Column(String(200), nullable=True)
-    
-    # 属性值
-    attribute_values = Column(JSON, nullable=True)
-    material_type = Column(Enum(MaterialType), nullable=False)
-    
-    # 状态
-    status = Column(Enum(GoldenRecordStatus), default=GoldenRecordStatus.ACTIVE)
-    
-    # 版本控制
-    version = Column(Integer, default=1)
-    revision = Column(Integer, default=1)
-    
-    # 发布信息
-    btp_published = Column(Boolean, default=False)
-    btp_published_at = Column(DateTime, nullable=True)
-    btp_sync_id = Column(String(50), nullable=True)
-    
-    om_synced = Column(Boolean, default=False)
-    om_synced_at = Column(DateTime, nullable=True)
-    om_entity_fqn = Column(String(200), nullable=True)
-    
-    # 审计
-    created_by = Column(String(50), nullable=False)
-    created_at = Column(DateTime, default=_now_utc)
-    updated_by = Column(String(50), nullable=True)
-    updated_at = Column(DateTime, default=_now_utc, onupdate=_now_utc)
-    
-    # 关联
-    application = relationship("MaterialApplication", back_populates="golden_record")
-    classification = relationship("MaterialClassification")
-    versions = relationship("GoldenRecordVersion", back_populates="golden_record", order_by="GoldenRecordVersion.version_number")
-
-
-class GoldenRecordVersion(Base):
-    """Immutable snapshot for every 金标数据 lifecycle change."""
-    __tablename__ = "golden_record_versions"
     __table_args__ = (
-        UniqueConstraint("golden_record_id", "version_number", name="uq_gr_version_number"),
+        UniqueConstraint("entity_type", "sap_table", "field_name", name="uq_entity_table_field"),
     )
 
+
+class MaterialRecord(Base):
+    """物料主数据存量记录（SAP MARA 风格，SPEC §2.2）"""
+    __tablename__ = "material_records"
+
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    golden_record_id = Column(String(36), ForeignKey("golden_records.id"), nullable=False, index=True)
-    parent_version_id = Column(String(36), ForeignKey("golden_record_versions.id"), nullable=True)
-    version_number = Column(Integer, nullable=False)
-
-    material_code = Column(String(50), nullable=False)
-    material_name = Column(String(200), nullable=False)
-    material_desc = Column(Text, nullable=True)
-    classification_id = Column(String(36), nullable=False)
-    attribute_values = Column(JSON, nullable=True)
-    material_type = Column(Enum(MaterialType), nullable=False)
-
-    status = Column(Enum(GoldenRecordVersionStatus), nullable=False)
-    change_type = Column(String(30), nullable=False)
-    change_reason = Column(Text, nullable=True)
-    created_by = Column(String(50), nullable=False)
-    approved_by = Column(String(50), nullable=True)
+    material_code = Column(String(50), nullable=False, index=True)  # MATNR
+    material_name = Column(String(200), nullable=False)             # MAKTX 冗余存储
+    attributes = Column(JSON, nullable=False, default=dict)         # SAP 字段名 → 值
+    source_system = Column(String(50), nullable=False, default="mock_sap")
+    status = Column(String(20), nullable=False, default="active")   # active / inactive
     created_at = Column(DateTime, default=_now_utc)
-    approved_at = Column(DateTime, nullable=True)
-    published_at = Column(DateTime, nullable=True)
+    updated_at = Column(DateTime, default=_now_utc, onupdate=_now_utc)
 
-    golden_record = relationship("GoldenRecord", back_populates="versions")
-    parent_version = relationship("GoldenRecordVersion", remote_side=[id])
+    __table_args__ = (
+        UniqueConstraint("material_code", name="uq_material_code"),
+    )
+
+
+class PartnerRecord(Base):
+    """供应商/客户主数据存量记录（SAP BP 风格，SPEC §2.3）"""
+    __tablename__ = "partner_records"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    entity_type = Column(String(50), nullable=False, index=True)   # supplier / customer
+    partner_code = Column(String(50), nullable=False, index=True)  # LIFNR / KUNNR
+    partner_name = Column(String(200), nullable=False)             # NAME1 冗余存储
+    attributes = Column(JSON, nullable=False, default=dict)        # SAP 字段名 → 值
+    source_system = Column(String(50), nullable=False, default="mock_sap")
+    status = Column(String(20), nullable=False, default="active")  # active / inactive
+    created_at = Column(DateTime, default=_now_utc)
+    updated_at = Column(DateTime, default=_now_utc, onupdate=_now_utc)
+
+    __table_args__ = (
+        UniqueConstraint("entity_type", "partner_code", name="uq_entity_partner_code"),
+    )
+
+
+class QualityCheckRule(Base):
+    """质量检测规则（SPEC §2.4）"""
+    __tablename__ = "quality_check_rules"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    name = Column(String(200), nullable=False)
+    description = Column(Text, nullable=True)
+    entity_type = Column(String(50), nullable=False, index=True)
+    rule_type = Column(
+        Enum(RuleType, values_callable=lambda e: [m.value for m in e]),
+        nullable=False,
+    )
+    field_name = Column(String(100), nullable=True)
+    standard_id = Column(String(36), ForeignKey("data_standards.id"), nullable=True)
+    rule_config = Column(JSON, nullable=False)
+    severity = Column(String(20), nullable=False, default="error")  # error / warning / info
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=_now_utc)
+    updated_at = Column(DateTime, default=_now_utc, onupdate=_now_utc)
+
+
+class QualityCheckBatch(Base):
+    """一次质量检测执行的批次记录（SPEC §2.5）"""
+    __tablename__ = "quality_check_batches"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    entity_type = Column(String(50), nullable=False, index=True)
+    total_entities = Column(Integer, nullable=False)
+    total_checks = Column(Integer, nullable=False)
+    passed = Column(Integer, nullable=False)
+    failed = Column(Integer, nullable=False)
+    skipped_checks = Column(Integer, nullable=False, default=0)  # 无数据源跳过的检查数（Phase 2 设计决策 3）
+    rule_ids = Column(JSON, nullable=False)
+    triggered_by = Column(String(50), nullable=False)
+    started_at = Column(DateTime, default=_now_utc)
+    finished_at = Column(DateTime, nullable=True)
+
+
+class QualityCheckResult(Base):
+    """质量检测结果，仅持久化未通过项（SPEC §2.6）"""
+    __tablename__ = "quality_check_results"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    rule_id = Column(String(36), ForeignKey("quality_check_rules.id"), nullable=False)
+    batch_id = Column(String(36), ForeignKey("quality_check_batches.id"), nullable=False, index=True)
+    entity_id = Column(String(36), nullable=False)
+    entity_type = Column(String(50), nullable=False, index=True)
+    field_name = Column(String(100), nullable=True)
+    field_value = Column(String(500), nullable=True)
+    severity = Column(String(20), nullable=False)
+    message = Column(Text, nullable=True)
+    checked_at = Column(DateTime, default=_now_utc, index=True)
+
+
+class SuspectedError(Base):
+    """疑似错误，进入人工确认流程（SPEC §2.7）"""
+    __tablename__ = "suspected_errors"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    entity_type = Column(String(50), nullable=False, index=True)
+    entity_id = Column(String(36), nullable=False)
+    entity_label = Column(String(200), nullable=True)
+
+    error_type = Column(String(50), nullable=False)  # duplicate / naming / classification / unit
+    severity = Column(String(20), nullable=False, default="warning")
+    title = Column(String(200), nullable=False)
+    description = Column(Text, nullable=True)
+    details = Column(JSON, nullable=True)
+
+    status = Column(String(20), nullable=False, default="pending")
+    resolved_by = Column(String(50), nullable=True)
+    resolved_at = Column(DateTime, nullable=True)
+    resolution_note = Column(Text, nullable=True)
+    matched_entity_id = Column(String(36), nullable=True, index=True)
+
+    detected_at = Column(DateTime, default=_now_utc, index=True)
+    detected_by = Column(String(50), nullable=True)
 
 
 class AuditLog(Base):
-    """全链路审计日志"""
+    """治理操作审计日志（SPEC §3.0）"""
     __tablename__ = "audit_logs"
-    
+
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    step_id = Column(String(20), nullable=False, index=True)  # SQ-2026-00001-S1
-    
-    # 关联
-    application_id = Column(String(36), ForeignKey("material_applications.id"), nullable=True)
-    golden_record_id = Column(String(36), ForeignKey("golden_records.id"), nullable=True)
-    
+    step_id = Column(String(50), nullable=False, index=True)
+
     # 步骤信息
-    step_name = Column(Enum(StepName), nullable=False)
+    step_name = Column(
+        Enum(StepName, values_callable=lambda e: [m.value for m in e]),
+        nullable=False,
+    )
     step_label = Column(String(50), nullable=False)
-    
+
     # 执行信息
     executed_by = Column(String(50), nullable=False)
     executed_by_name = Column(String(100), nullable=True)
     executed_at = Column(DateTime, default=_now_utc)
-    
+
     # 状态
-    status = Column(String(20), nullable=False)  # success, failed, pending
+    status = Column(String(20), nullable=False)  # success / failed
     status_label = Column(String(50), nullable=True)
-    
+
     # 详情
     details = Column(JSON, nullable=True)
     error_message = Column(Text, nullable=True)
-    
-    # 关联
-    application = relationship("MaterialApplication", back_populates="audit_logs")
 
 
-class ExternalSystemLog(Base):
-    """外部系统交互日志（OpenMetadata / BTP）"""
-    __tablename__ = "external_system_logs"
-    
+class QualityTicket(Base):
+    """数据质量问题工单（TC-AIG-002）。"""
+    __tablename__ = "quality_ticket"
+
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    system_name = Column(String(20), nullable=False)  # openmetadata, btp
-    operation = Column(String(50), nullable=False)
-    entity_type = Column(String(50), nullable=True)  # material, supplier
-    entity_id = Column(String(50), nullable=True)
-    
-    request_payload = Column(JSON, nullable=True)
-    response_payload = Column(JSON, nullable=True)
-    status = Column(String(20), nullable=False)  # success, failed, timeout
-    status_code = Column(Integer, nullable=True)
-    error_message = Column(Text, nullable=True)
-    
-    executed_at = Column(DateTime, default=_now_utc)
-    duration_ms = Column(Integer, nullable=True)
-
-
-class PublishSyncTask(Base):
-    """Durable retry task for one external publish target."""
-    __tablename__ = "publish_sync_tasks"
-    __table_args__ = (
-        UniqueConstraint("application_id", "system_name", name="uq_publish_task_target"),
+    request_id = Column(String(64), nullable=False, index=True)
+    application_id = Column(String(36), nullable=True)
+    golden_record_id = Column(String(36), nullable=True)
+    rule_key = Column(String(100), nullable=False)
+    severity = Column(String(20), nullable=False)
+    issue_type = Column(String(50), nullable=False)
+    description = Column(Text, nullable=False)
+    status = Column(
+        Enum(TicketStatus, values_callable=lambda enum: [member.value for member in enum]),
+        nullable=False,
+        default=TicketStatus.DRAFT,
     )
-
-    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    application_id = Column(String(36), ForeignKey("material_applications.id"), nullable=False, index=True)
-    golden_record_id = Column(String(36), ForeignKey("golden_records.id"), nullable=False, index=True)
-    system_name = Column(String(20), nullable=False)
-    operation = Column(String(50), nullable=False)
-    status = Column(String(20), nullable=False, default="pending")
-    attempt_count = Column(Integer, nullable=False, default=0)
-    max_attempts = Column(Integer, nullable=False, default=5)
-    next_retry_at = Column(DateTime, nullable=True)
-    started_at = Column(DateTime, nullable=True)
-    completed_at = Column(DateTime, nullable=True)
-    last_error = Column(Text, nullable=True)
-    request_payload = Column(JSON, nullable=True)
-    response_payload = Column(JSON, nullable=True)
+    assignee_owner_id = Column(String(36), nullable=True)
+    sla_due_at = Column(DateTime, nullable=True)
+    escalated_level = Column(
+        Enum(EscalationLevel, values_callable=lambda enum: [member.value for member in enum]),
+        nullable=False,
+        default=EscalationLevel.NONE,
+    )
+    evidence_json = Column(JSON, nullable=True)
+    trace_id = Column(String(64), nullable=True, index=True)
     created_at = Column(DateTime, default=_now_utc)
     updated_at = Column(DateTime, default=_now_utc, onupdate=_now_utc)
+
+
+class MergeTicket(Base):
+    """金标归并建议及人工裁决工单（TC-AIG-003）。"""
+    __tablename__ = "merge_ticket"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    request_id = Column(String(64), nullable=False, index=True)
+    candidate_golden_ids = Column(JSON, nullable=False)
+    suggested_golden_id = Column(String(36), nullable=True)
+    evidence_json = Column(JSON, nullable=True)
+    status = Column(
+        Enum(TicketStatus, values_callable=lambda enum: [member.value for member in enum]),
+        nullable=False,
+        default=TicketStatus.DRAFT,
+    )
+    factory_agreements_json = Column(JSON, nullable=True)
+    escalated_level = Column(
+        Enum(EscalationLevel, values_callable=lambda enum: [member.value for member in enum]),
+        nullable=False,
+        default=EscalationLevel.NONE,
+    )
+    decided_by = Column(String(36), nullable=True)
+    decision_opinion = Column(Text, nullable=True)
+    decided_at = Column(DateTime, nullable=True)
+    trace_id = Column(String(64), nullable=True, index=True)
+    created_at = Column(DateTime, default=_now_utc)
+    updated_at = Column(DateTime, default=_now_utc, onupdate=_now_utc)
+
+
+class KeyMapping(Base):
+    """源系统编码到金标记录的唯一映射（TC-MAP-001）。"""
+    __tablename__ = "key_mapping"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    golden_record_id = Column(String(36), nullable=False, index=True)
+    source_system = Column(String(50), nullable=False)
+    source_code = Column(String(100), nullable=False)
+    mapping_type = Column(String(20), nullable=False)
+    created_at = Column(DateTime, default=_now_utc)
+
+    __table_args__ = (
+        UniqueConstraint("source_system", "source_code", name="uq_key_mapping_source_code"),
+    )
+
+
+class AgentTrace(Base):
+    """Agent 运行与裁决依据快照（TC-AIG-011）。"""
+    __tablename__ = "agent_trace"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    trace_id = Column(String(64), nullable=False, unique=True, index=True)
+    agent_name = Column(String(100), nullable=False)
+    model_version = Column(String(100), nullable=True)
+    input_summary = Column(Text, nullable=False)
+    evidence_refs_json = Column(JSON, nullable=True)
+    decision_snapshot_json = Column(JSON, nullable=True)
+    created_at = Column(DateTime, default=_now_utc)
+
+
+class GovernanceOwner(Base):
+    """治理责任人、数据管家与审批人目录。"""
+    __tablename__ = "governance_owner"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    role = Column(String(20), nullable=False)
+    name = Column(String(100), nullable=False)
+    department = Column(String(100), nullable=False)
+    domain = Column(String(50), nullable=False)
+    email = Column(String(254), nullable=False)
+    is_active = Column(Boolean, nullable=False, default=True)
+    created_at = Column(DateTime, default=_now_utc)
+    updated_at = Column(DateTime, default=_now_utc, onupdate=_now_utc)
+
+
+class ApprovalEvidence(Base):
+    """人工审批操作及当时可见证据的不可变快照。"""
+    __tablename__ = "approval_evidence"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    ticket_type = Column(String(20), nullable=False)
+    ticket_id = Column(String(36), nullable=False, index=True)
+    approver_id = Column(String(36), nullable=False, index=True)
+    action = Column(String(20), nullable=False)
+    opinion = Column(Text, nullable=True)
+    snapshot_json = Column(JSON, nullable=True)
+    created_at = Column(DateTime, default=_now_utc)

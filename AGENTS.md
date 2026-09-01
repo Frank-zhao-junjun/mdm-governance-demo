@@ -4,9 +4,9 @@
 
 ## 项目概述
 
-RalphLoop MDM Governance — 物料主数据治理平台。全栈应用，前端为 React SPA，后端为 FastAPI REST API，覆盖物料申请、审批、金标数据、分类管理、治理规则、元数据治理与审计追踪等 MDM 核心流程。
+RalphLoop MDM Governance — 物料主数据治理平台。服务边界明确为：仅提供数据治理与数据质量管理能力，不承接新增数据流程、审批流程、Golden Data（金标数据）管理和下游分发执行。
 
-主数据治理流程：新建申请 → 草稿 → 提交（自动执行质量校验 → 重复预检 → 编码生成）→ 部门审批 → 管理员审批 → 发布（创建金标数据 → BTP 发布 + OpenMetadata 同步）。金标数据支持修订、失效、回滚，每次变更在 `golden_record_versions` 保存不可变快照。
+本项目重点覆盖治理规则、质量校验、重复识别、审计追踪、元数据治理与问题闭环管理；新增数据的申请、审批、金标数据创建、发布与分发等动作均不由本平台负责，需由客户业务系统或执行层承担。
 
 ## 技术栈
 
@@ -88,6 +88,8 @@ RalphLoop MDM Governance — 物料主数据治理平台。全栈应用，前端
 - **后端入口**：`backend/app/main.py` — FastAPI app，注册 6 个 router，含 SPA fallback（`dist/` 存在时非 API 路由返回 `dist/index.html`）
 - **后端配置**：`backend/app/core/config.py` — 环境变量驱动；`OM_ENABLED`/`BTP_ENABLED` **默认 false**，`ENV` 默认 `development`
 - **数据库初始化**：`backend/init_db.py` — 建表 + 种子数据
+
+> 说明：这里的示例流程保留了申请、审批、金标数据和发布链路，但这些仅作为演示或演进用例，不属于本项目对外承诺的服务边界。对外服务范围仅限数据治理与数据质量管理。
 
 ## 构建与运行命令
 

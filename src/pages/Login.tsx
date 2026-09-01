@@ -65,9 +65,9 @@ const Login: React.FC = () => {
             {loading ? '登录中...' : '登录'}
           </Button>
           <div className="text-xs text-gray-400 text-center space-y-1">
-            <p>测试账号: user001 / password001 (申请人)</p>
-            <p>admin001 / adminpass001 (管理员)</p>
-            <p>dept001 / deptpass001 (部门审批)</p>
+            <p>data001 / datapass001（数据管理员，可维护标准）</p>
+            <p>admin001 / adminpass001（管理员，可维护标准）</p>
+            <p>user001 / password001 · dept001 / deptpass001（只读）</p>
             <p className="pt-2">
               <a href="/about.html" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">
                 项目介绍
