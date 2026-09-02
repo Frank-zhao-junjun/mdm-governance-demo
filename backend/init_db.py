@@ -105,6 +105,8 @@ MATERIALS = [
     ("MAT-00020", "不锈钢板 304 δ2", {"MTART": "ROH", "MEINS": "KG", "MATKL": "001", "BRGEW": 12.5, "NTGEW": 12.4, "GEWEI": "KG"}),           # 编码格式错误 + 名称与 M10003 近似
     ("M10019", "深沟球轴承 6205 2RS", {"MTART": "XXX", "MEINS": "PC", "MATKL": "002", "BRGEW": 0.13, "NTGEW": 0.12, "GEWEI": "KG"}),          # MTART 非法枚举
     ("M10020", "油封 TC 45×62×8", {"MTART": "HALB", "MATKL": "002", "BRGEW": 0.03, "NTGEW": -0.01, "GEWEI": "KG"}),                          # 缺 MEINS + 净重为负
+    ("M10021", "测试物料 待补充", {"MTART": "ROH", "MEINS": "PC", "MATKL": "001", "BRGEW": 0.1, "NTGEW": 0.09, "GEWEI": "KG"}),              # naming 违例：占位/无意义文本
+    ("M10022", "ＡＢＳ树脂 ＰＣ－２", {"MTART": "ROH", "MEINS": "PC", "MATKL": "001", "BRGEW": 0.5, "NTGEW": 0.48, "GEWEI": "KG"}),           # naming 违例：全角字母数字
 ]
 
 SUPPLIERS = [

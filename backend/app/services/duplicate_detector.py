@@ -88,8 +88,8 @@ ENTITY_TYPES: Tuple[str, ...] = (ENTITY_MATERIAL, ENTITY_SUPPLIER, ENTITY_CUSTOM
 
 ACTIVE_STATUS = "active"
 
-#: 单机演示环境单次同步检测上限（SPEC S6：10,000 条存量扫描）。
-MAX_ENTITIES_PER_RUN = 10_000
+#: 单次同步检测上限，与质量检测一致（SPEC v1 限 5000 实体同步执行，超出提示分批）。
+MAX_ENTITIES_PER_RUN = 5_000
 
 #: 近重复默认阈值，与 §2.4 duplicate_check 的 rule_config.similarity_threshold 示例一致。
 DEFAULT_SIMILARITY_THRESHOLD = 0.8

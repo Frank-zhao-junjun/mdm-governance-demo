@@ -1,7 +1,7 @@
 """质量检测批次编排（SPEC §5 run 流程 + Phase 2 设计决策 6）。
 
 介于 API 与纯函数引擎之间，只做四件事：
-限额校验（10,000 实体上限）→ 规则装配（只走 quality_check_rules 行路径，
+限额校验（5,000 实体上限）→ 规则装配（只走 quality_check_rules 行路径，
 设计决策 1）→ 取存量记录 → 执行引擎 → 批次统计 + 失败明细**同一事务**落库。
 
 审计由 API 层完成（沿用 data_standards 的两段提交模式）；
@@ -48,7 +48,7 @@ def count_entities(
     entity_type: str,
     entity_ids: Optional[Sequence[str]] = None,
 ) -> int:
-    """实体计数（10,000 上限校验用；按 entity_ids 过滤时同样只数子集）。"""
+    """实体计数（5,000 上限校验用；按 entity_ids 过滤时同样只数子集）。"""
     ids = _norm_ids(entity_ids)
     if entity_type == entity_accessor.MATERIAL:
         return crud.count_material_records(db, entity_ids=ids)
@@ -114,7 +114,7 @@ def run_batch(
     """
     ids = _norm_ids(entity_ids)
 
-    # 1. 限额校验：10,000 上限、指定 ids 未命中
+    # 1. 限额校验：5,000 上限、指定 ids 未命中
     total = count_entities(db, entity_type, ids)
     if total > entity_accessor.MAX_ENTITIES:
         raise EntityLimitExceeded(total)

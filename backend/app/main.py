@@ -10,7 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from app.api import copilot, data_standards, evidence, governance, owners, quality_checks
+from app.api import copilot, data_import, data_standards, evidence, governance, owners, quality_checks, suspected_errors
 from app.core.auth import authenticate_user, create_access_token, require_any
 from app.core.config import settings
 from app.core.database import Base, engine
@@ -55,6 +55,8 @@ if os.path.exists(static_dir):
 # Include routers
 app.include_router(data_standards.router)
 app.include_router(quality_checks.router)
+app.include_router(suspected_errors.router)
+app.include_router(data_import.router)
 app.include_router(copilot.router)
 app.include_router(governance.router)
 app.include_router(owners.router)

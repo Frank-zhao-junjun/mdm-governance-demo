@@ -7,6 +7,7 @@ import Dashboard from './pages/Dashboard';
 import DataStandards from './pages/DataStandards';
 import QualityChecks from './pages/QualityChecks';
 import QualityReport from './pages/QualityReport';
+import SuspectedErrors from './pages/SuspectedErrors';
 import Copilot from './pages/Copilot';
 import GovernanceDashboard from './pages/GovernanceDashboard';
 import AgentActivity from './pages/AgentActivity';
@@ -25,6 +26,7 @@ const App: React.FC = () => {
           <Route path="/quality/standards" element={<DataStandards />} />
           <Route path="/quality/checks" element={<QualityChecks />} />
           <Route path="/quality/checks/report" element={<QualityReport />} />
+          <Route path="/quality/suspected" element={<SuspectedErrors />} />
           <Route path="/copilot" element={<Copilot />} />
           <Route path="/governance" element={<GovernanceDashboard />} />
           <Route path="/agents" element={<AgentActivity />} />

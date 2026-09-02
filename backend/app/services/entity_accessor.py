@@ -34,8 +34,9 @@ CUSTOMER = "customer"
 PARTNER_ENTITY_TYPES = frozenset({SUPPLIER, CUSTOMER})
 KNOWN_ENTITY_TYPES = frozenset({MATERIAL}) | PARTNER_ENTITY_TYPES
 
-#: 单机演示环境的单次批量/列举实体上限（SPEC S6：10,000 条存量扫描）
-MAX_ENTITIES = 10_000
+#: 单次检测/列举的实体上限（SPEC §5 同步执行：单次限 5000，超出返回 400 提示分批）。
+#: 存量总量不受此限制——10,000 条种子数据仍合法，只是必须分批扫描。
+MAX_ENTITIES = 5_000
 
 ATTRIBUTES = "attributes"
 

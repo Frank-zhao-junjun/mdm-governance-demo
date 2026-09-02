@@ -288,3 +288,82 @@ export interface QualityReport {
   by_rule: QualityReportRuleStat[];
   top_issues: QualityReportTopIssue[];
 }
+
+// ========== 疑似错误（SPEC §2.7 / §3.3） ==========
+
+/** 与 backend schemas.SuspectedErrorType 一致（v1 仅 duplicate / naming 有检测数据源） */
+export type SuspectedErrorType = 'duplicate' | 'naming' | 'classification' | 'unit';
+
+/** 与 schemas.SuspectedErrorResolveRequest.status pattern 一致 */
+export type SuspectedErrorStatus = 'pending' | 'confirmed' | 'resolved' | 'false_positive';
+
+/** 处理对话框可选目标状态（后端只接受 confirmed / resolved / false_positive） */
+export type SuspectedResolveStatus = 'confirmed' | 'resolved' | 'false_positive';
+
+/** POST /api/suspected-errors/detect 请求体（= schemas.SuspectedErrorDetectRequest） */
+export interface SuspectedDetectPayload {
+  entity_type: EntityType;
+  error_types?: SuspectedErrorType[] | null;
+  entity_ids?: string[] | null;
+}
+
+/** POST /api/suspected-errors/detect 响应（= schemas.SuspectedErrorDetectResponse） */
+export interface SuspectedDetectResponse {
+  created: number;
+  refreshed: number;
+  skipped_false_positive: number;
+  auto_closed: number;
+  total_pending: number;
+}
+
+/** 判定依据（= SuspectedError.details，取自检测器 finding.evidence） */
+export interface SuspectedErrorDetails {
+  strategy?: string;
+  rule?: string;
+  reason?: string;
+  similarity?: number;
+  field?: string;
+  entity_code?: string;
+  entity_name?: string;
+  matched_code?: string;
+  matched_name?: string;
+  suggestion?: string;
+  keeper_rule?: string;
+  shared_tokens?: string[];
+  rule_code?: string;
+  rule_label?: string;
+  violation?: string;
+  [key: string]: unknown;
+}
+
+/** GET /api/suspected-errors 响应项（= schemas.SuspectedErrorResponse） */
+export interface SuspectedError {
+  id: string;
+  entity_type: EntityType;
+  entity_id: string;
+  entity_label: string | null;
+  error_type: SuspectedErrorType;
+  severity: CheckSeverity;
+  title: string;
+  description: string | null;
+  details: SuspectedErrorDetails | null;
+  status: SuspectedErrorStatus;
+  resolved_by: string | null;
+  resolved_at: string | null;
+  resolution_note: string | null;
+  matched_entity_id: string | null;
+  detected_at: string;
+  detected_by: string | null;
+}
+
+/** GET /api/suspected-errors 响应（= schemas.SuspectedErrorListResponse） */
+export interface SuspectedErrorListResponse {
+  total: number;
+  items: SuspectedError[];
+}
+
+/** POST /api/suspected-errors/{id}/resolve 请求体（= schemas.SuspectedErrorResolveRequest） */
+export interface SuspectedResolvePayload {
+  status: SuspectedResolveStatus;
+  resolution_note?: string | null;
+}

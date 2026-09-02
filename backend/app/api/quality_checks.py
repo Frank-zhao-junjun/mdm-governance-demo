@@ -29,7 +29,7 @@ def run_quality_check(
     user: dict = Depends(require_admin),
     db: Session = Depends(get_db),
 ):
-    """Execute a quality check batch (SPEC S6: sync, ≤10,000 entities)."""
+    """Execute a quality check batch (SPEC §5: sync, ≤5,000 entities per run)."""
     try:
         batch, result = quality_runner.run_batch(
             db,

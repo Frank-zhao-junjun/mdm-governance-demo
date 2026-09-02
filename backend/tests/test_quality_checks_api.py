@@ -162,16 +162,16 @@ def test_run_invalid_entity_type(quality_db, data_client):
     assert _run(data_client, entity_type="foo").status_code == 422
 
 
-def test_run_limit_10000(quality_db, data_client, monkeypatch):
+def test_run_limit_5000(quality_db, data_client, monkeypatch):
     monkeypatch.setattr(
-        quality_runner, "count_entities", lambda db, entity_type, entity_ids=None: 10001
+        quality_runner, "count_entities", lambda db, entity_type, entity_ids=None: 5001
     )
     resp = _run(data_client)
     assert resp.status_code == 400
     assert "分批" in resp.json()["detail"]
 
     monkeypatch.setattr(
-        quality_runner, "count_entities", lambda db, entity_type, entity_ids=None: 10000
+        quality_runner, "count_entities", lambda db, entity_type, entity_ids=None: 5000
     )
     assert _run(data_client).status_code == 200
 

@@ -1,6 +1,8 @@
 """End-to-end acceptance test for the AI-enhanced governance demo (TC-AIG-012)."""
 import time
 
+import pytest
+
 from app import models
 from app.agents.dedup_agent import DedupAgent
 from app.agents.orchestrator import GovernanceOrchestrator
@@ -97,7 +99,7 @@ def test_tc_aig_012_ten_unfamiliar_records_are_all_suggested_or_ticketed_and_adj
 
 
 def test_s6_ten_thousand_seed_records_complete_a_quality_scan_within_five_minutes(db):
-    """S6: the demo's full 10,000-record stock scan stays within the stated budget."""
+    """S6: the 10,000-record demo stock is fully scanned in SPEC-compliant 5,000 batches."""
     seed_demo_data(db)
     standard = db.query(models.DataStandard).filter(
         models.DataStandard.standard_source == "demo",
@@ -113,11 +115,28 @@ def test_s6_ten_thousand_seed_records_complete_a_quality_scan_within_five_minute
     ))
     db.commit()
 
+    all_ids = [row[0] for row in db.query(models.MaterialRecord.id).all()]
+    assert len(all_ids) == 10_000
+
+    with pytest.raises(quality_runner.EntityLimitExceeded):
+        quality_runner.run_batch(db, "material", triggered_by="demo-e2e")
+
     started = time.perf_counter()
-    batch, result = quality_runner.run_batch(db, "material", triggered_by="demo-e2e")
+    scanned = 0
+    failed_total = 0
+    for offset in range(0, len(all_ids), 5_000):
+        batch, result = quality_runner.run_batch(
+            db,
+            "material",
+            entity_ids=all_ids[offset:offset + 5_000],
+            triggered_by="demo-e2e",
+        )
+        assert batch.total_entities == 5_000
+        assert result.total_entities == 5_000
+        scanned += batch.total_entities
+        failed_total += batch.failed
     elapsed = time.perf_counter() - started
 
-    assert batch.total_entities == 10_000
-    assert result.total_entities == 10_000
-    assert batch.failed >= 1
-    assert elapsed < 300, f"10,000 条存量扫描超过 5 分钟：{elapsed:.2f}s"
+    assert scanned == 10_000
+    assert failed_total >= 1
+    assert elapsed < 300, f"10,000 条存量分批扫描超过 5 分钟：{elapsed:.2f}s"

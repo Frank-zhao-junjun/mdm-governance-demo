@@ -1,5 +1,5 @@
 """CRUD operations for the stock-data governance service."""
-from typing import List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 from sqlalchemy.orm import Session
 
@@ -225,6 +225,99 @@ def get_partner_records(db: Session, entity_type: Optional[str] = None, entity_i
     if entity_ids:
         query = query.filter(models.PartnerRecord.id.in_(entity_ids))
     return query.limit(limit).all()
+
+
+# ========== Suspected Errors (SPEC §3.3) ==========
+
+def get_suspected_error(db: Session, error_id: str) -> Optional[models.SuspectedError]:
+    return (
+        db.query(models.SuspectedError)
+        .filter(models.SuspectedError.id == error_id)
+        .first()
+    )
+
+
+def list_suspected_errors(
+    db: Session,
+    entity_type: str,
+    error_type: Optional[str] = None,
+    status: Optional[str] = None,
+    skip: int = 0,
+    limit: int = 50,
+) -> Tuple[List[models.SuspectedError], int]:
+    query = db.query(models.SuspectedError).filter(
+        models.SuspectedError.entity_type == entity_type
+    )
+    if error_type:
+        query = query.filter(models.SuspectedError.error_type == error_type)
+    if status:
+        query = query.filter(models.SuspectedError.status == status)
+    total = query.count()
+    items = (
+        query.order_by(models.SuspectedError.detected_at.desc(), models.SuspectedError.id)
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
+    return items, total
+
+
+def get_suspected_errors_by_entity_type(db: Session, entity_type: str) -> List[models.SuspectedError]:
+    """一次预载该实体类型全部疑似错误行（§2.7 重检去重三键映射用）。"""
+    return (
+        db.query(models.SuspectedError)
+        .filter(models.SuspectedError.entity_type == entity_type)
+        .all()
+    )
+
+
+def existing_entity_ids(db: Session, entity_type: str, entity_ids: List[str]) -> set:
+    """传入 id 集合中仍存在且 active 的记录 id（自动关闭判定用，一次查询）。"""
+    ids = [str(i) for i in entity_ids if str(i)]
+    if not ids:
+        return set()
+    if entity_type == "material":
+        rows = (
+            db.query(models.MaterialRecord.id)
+            .filter(
+                models.MaterialRecord.id.in_(ids),
+                models.MaterialRecord.status == "active",
+            )
+            .all()
+        )
+    elif entity_type in ("supplier", "customer"):
+        rows = (
+            db.query(models.PartnerRecord.id)
+            .filter(
+                models.PartnerRecord.entity_type == entity_type,
+                models.PartnerRecord.id.in_(ids),
+                models.PartnerRecord.status == "active",
+            )
+            .all()
+        )
+    else:
+        return set()
+    return {row[0] for row in rows}
+
+
+# ========== Data Import (SPEC Phase 4.1) ==========
+
+def map_partner_records_by_code(
+    db: Session, entity_type: str, codes: List[str]
+) -> Dict[str, models.PartnerRecord]:
+    """按 partner_code 批量取存量记录，供导入 upsert 一次查询定位（键为 partner_code）。"""
+    unique_codes = {str(c) for c in codes if str(c)}
+    if not unique_codes:
+        return {}
+    rows = (
+        db.query(models.PartnerRecord)
+        .filter(
+            models.PartnerRecord.entity_type == entity_type,
+            models.PartnerRecord.partner_code.in_(unique_codes),
+        )
+        .all()
+    )
+    return {row.partner_code: row for row in rows}
 
 
 # ========== Audit Logs ==========

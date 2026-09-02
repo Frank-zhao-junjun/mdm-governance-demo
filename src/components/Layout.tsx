@@ -18,8 +18,6 @@ interface NavItem {
   path: string;
   label: string;
   icon: React.ComponentType<{ className?: string }>;
-  /** SPEC §6.1 信息架构中的后续页面（Phase 2 / Phase 3），尚未实现时置灰不可点 */
-  comingSoon?: string;
 }
 
 // SPEC §6.1 页面结构：/quality/standards · /quality/checks · /quality/checks/report · /quality/suspected
@@ -31,7 +29,7 @@ const NAV_ITEMS: NavItem[] = [
   { path: '/agents', label: 'Agent 活动流', icon: Bot },
   { path: '/disputes', label: '权责冲突', icon: AlertTriangle },
   { path: '/quality/checks', label: '质量检测', icon: ShieldCheck },
-  { path: '/quality/suspected', label: '疑似错误', icon: AlertTriangle, comingSoon: 'Phase 3' },
+  { path: '/quality/suspected', label: '疑似错误', icon: AlertTriangle },
 ];
 
 function resolveTitle(pathname: string): string {
@@ -68,22 +66,6 @@ const Layout: React.FC = () => {
             {NAV_ITEMS.map((item) => {
               const Icon = item.icon;
               const isActive = location.pathname.startsWith(item.path);
-
-              if (item.comingSoon) {
-                return (
-                  <div
-                    key={item.path}
-                    className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-500 cursor-not-allowed"
-                    title={`${item.label}将在 ${item.comingSoon} 交付，暂未开放`}
-                  >
-                    <Icon className="w-5 h-5" />
-                    <span>{item.label}</span>
-                    <span className="ml-auto rounded bg-slate-800 px-1.5 py-0.5 text-[10px] text-gray-400">
-                      待开放
-                    </span>
-                  </div>
-                );
-              }
 
               return (
                 <Link

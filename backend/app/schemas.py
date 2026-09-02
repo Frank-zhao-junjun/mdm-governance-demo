@@ -224,6 +224,25 @@ class SuspectedErrorResolveRequest(BaseModel):
     resolution_note: Optional[str] = Field(None, max_length=2000)
 
 
+# ========== Data Import (SPEC Phase 4.1) ==========
+
+class ImportRowError(BaseModel):
+    """单行导入失败明细（验收：格式错误行返回明细报告）。row 为 CSV 数据行号，从 1 起（不含表头）。"""
+    row: int
+    field: Optional[str] = None
+    message: str
+
+
+class PartnerImportResponse(BaseModel):
+    entity_type: str
+    filename: str
+    total_rows: int
+    created: int
+    updated: int
+    failed: int
+    errors: List[ImportRowError]
+
+
 # ========== AI Governance Copilot (TC-AIG-004/009/011) ==========
 
 class TicketDecisionRequest(BaseModel):
