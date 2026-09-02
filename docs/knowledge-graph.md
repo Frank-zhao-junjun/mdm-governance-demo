@@ -1,5 +1,11 @@
 # 制造业物料主数据治理平台 · 代码资产知识图谱
 
+> ⚠️ **状态：已滞后的历史快照（v1.0.0 / 2026-07-13），不反映当前代码树**
+>
+> 本图谱定格于 2026-09 重新定位之前。以下条目在文中仍被当作现有资产描述，但**代码已删除**：`api/applications.py`、`api/classifications.py`、`api/golden_records.py`、`api/metadata_governance.py`、`services/code_generator.py`、`services/material_validator.py`、`services/openmetadata_sync.py`、`tests/test_code_generator.py`、`tests/test_material_validator.py`。文中涉及物料申请、审批流、金标数据、编码生成、发布同步、OpenMetadata/BTP 集成的端到端映射同样已失效。
+>
+> **当前权威清单**：`AGENTS.md` 的「目录结构」章节（8 个 router / 8 个 service / 6 个 Skill / 4 个 Agent / 14 张表），配合 `README.md`。本文件仅作历史参考保留，未逐条修订。
+
 > **版本**: v1.0.0 | **更新**: 2026-07-13 | **技术栈**: React 19 + FastAPI + SQLite/PostgreSQL
 > **范围**: 全仓库（HEAD 当前快照），React/FastAPI 架构
 > **形式**: 代码资产图谱 — 目录树 / 文件职责 / 数据模型 / API 端点 / 端到端映射

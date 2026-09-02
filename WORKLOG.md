@@ -8,6 +8,21 @@
 
 ## 2026-09-02
 
+### SAP 知识库 P0-P1-P2 交付核验
+
+**做了什么**
+- 核验 case 1 社区博客已入库：`community.sap.com/integration-blogs/btp-integration-suite/2026-06-17_14366182_enforcing-package-level-segregation-shared-cpi.md`，正文约 9.3K 字符、16 个标题层级。
+- 核验 `scripts/eval_queries.json` 共 62 条，其中新增 case 查询 12 条，已补齐为 12/12 条均带真实 `product` 字段。
+- 将“真实 Case 评测法”写入 `D:/AI/SAP_SKILL/sap-issue-analyzer/SKILL.md`；case 7 待深挖清单已存在于 `knowledge/S4HANA_Cloud_Public/URL_待深挖清单.md`。
+
+**验证证据**
+- `python scripts/check_index.py`：BM25 401,977 / meta 402,081，覆盖率正常。
+- case 5 定向检索命中 10 条；case 1 定向检索命中博客和 Access Policies 官方文档。
+- UTF-8 Python 校验：评测总数 62、新增 case 12、缺失 product 数 0。
+
+**遗留/决策**
+- case 7 SAP for Me 用户计费口径仍需 SAP for Me 权限页面、合同或官方许可资料核验；不使用公开 help.sap.com 的泛化文档替代。
+
 ### SAP 知识库缺口补足评测
 
 **做了什么**
@@ -171,6 +186,31 @@
 **验证证据**
 - SPEC 三处改动（§1.4.1 / Phase 0 判据 / §11）均已落盘；`grep` 复核全文无其他处引用旧判据口径。
 - 本次为纯文档变更，代码未动，`pytest` 无需重跑（上一轮 310/310 绿）。
+
+### 全库文档一致性清扫（Phase 12 收尾）
+
+**背景**：SPEC 升 v1.4、上限口径订正之后，仓库里仍有四份文档在按旧范围描述系统，且本文件自身有三处陈述互相矛盾或与代码不符。本轮做一次全库清扫，只改文档，不动代码。
+
+**做了什么 — 订正本文件三处**
+1. 「未能验收的项」里的 `Phase 0 … = 未达成` 与下文状态表 `Phase 0 完成` 直接冲突 → 加删除线并标注：那是 **SPEC v1.3** 旧判据下的结论，已被 v1.4 改写的判据取代（保留原文备查，不抹掉历史）。
+2. T8 条目原写「实体上限统一提升 5,000 → 10,000」——**这是错的**。实测三处常量 `entity_accessor.MAX_ENTITIES` / `duplicate_detector.MAX_ENTITIES_PER_RUN` / `csv_importer.MAX_ROWS` 全部仍是 `5_000`，SPEC v1.4 三处（§5.2 同步上限 / Phase 2 验收 / 风险表）也都写 5000。已改为：10,000 只是 `seed_demo_data.py` 的**播种量**，`test_demo_e2e.py:119-140` 是按 5,000 一批分两次跑来绕过单次上限，上限本身没动。
+3. 「文档同步」条目把错误的 10,000 上限传给了 AGENTS.md 的记录 → 改回 5,000，并补记同时加入的 ⚠️ 播种量冲突提示。
+
+**做了什么 — 四份滞后文档加声明横幅**（原文完整保留在横幅之下，不做外科式改写，以保住档案价值）
+- `ROADMAP.md`：目标架构仍写「金标数据为核心 / ERP-BTP 为执行出口 / OpenMetadata 为元数据上下文平台」→ 标注为历史路线图，非当前基线，OM/BTP 集成代码已删除。
+- `tasks.md`：T1-T8 跟踪表 → 标注为已完成并转历史；**其中「依据」列引用的 `SPEC 2026-08-26-ai-enhanced-dg-demo-spec.md` 与 `plan.md 2026-08-26-ai-enhanced-dg-demo-plan.md` 在本仓库不存在**（`ls docs/*.md` 只有 4 个文件，`find . -maxdepth 2 -name "*ai-enhanced-dg-demo*"` 无匹配），正式范围依据改指 SPEC v1.4 §1.4.1。
+- `docs/knowledge-graph.md`：v1.0.0 / 2026-07-13 快照仍把九个已删模块当现有资产 → 逐个点名（`api/applications.py`、`api/classifications.py`、`api/golden_records.py`、`api/metadata_governance.py`、`services/code_generator.py`、`services/material_validator.py`、`services/openmetadata_sync.py`、`tests/test_code_generator.py`、`tests/test_material_validator.py`），并指向 AGENTS.md 目录结构为当前权威清单。
+- `docs/openmetadata-assessment.md`：2026-08-23 预研 → 标注评估口径过期（按旧范围的申请/审批/编码/金标维度对比）+ 代码引用失效（`api/applications.py` 与 OM 集成均已移除），仅剩外部参考资料价值。
+
+**验证证据**
+- git 状态核实：`git rev-list --left-right --count origin/main...main` → `0 0`，**本地与远端完全同步，无未推送 commit**。已落库的六个 commit：`4862b7d`（T1-T8）、`b673209`（Phase 3 + 4.1）、`cc9b8c5`（e2e_test.py 重写）、`673b6d8`（README/AGENTS 同步）、`8734edc`（SPEC v1.4 + WORKLOG/TC.md 订正）、`00f71b1`（AGENTS.md 补 crud 默认 limit 口径提醒）。
+- 上一轮那批文档改动**没有丢**：`673b6d8` 吸收了 AGENTS.md/README.md/`.env.example`，`8734edc` 吸收了 SPEC、WORKLOG 的三处订正与 TC.md 横幅（`grep` 复核两处订正字样仍在），`00f71b1` 吸收了 AGENTS.md 的 crud limit 提示。本轮清扫**未提交部分为 5 文件 / 53 行纯新增，无删除**（四份横幅 29 行 + 本条目 24 行）。
+- ⚠️ 同批入库的无关内容：WORKLOG.md 里还携带一条**并行会话**写入的「SAP 知识库 P0-P1-P2 交付核验」条目（15 行，指向 `D:/AI/SAP_SKILL/`），与本次文档清扫无关。因二者落在同一文件、无法按文件拆分，随本次 commit 一并入库，特此披露以免日后误读为本轮产物。
+- Phase 0 在 v1.4 判据下确实判绿的证据：`grep` `backend/app` 的 `金标|golden|申请单|审批流|发布|分发`，命中只剩两类——(a) `main.py:4` / `models.py:4` / `api/data_import.py:3` / `services/csv_importer.py:3` 的边界声明 docstring；(b) §1.4.1 已承认的 AI 治理层内部引用（`models.py:259/283/288/289/311/315`、`api/governance.py:51`、`agents/dedup_agent.py:24/29/30`、`skills/merge_executor.py:10/20/26`）。**无任何业务申请/审批/发布链路存活。**
+- 本轮纯文档变更，未跑 `pytest`（上一轮 310/310 绿，代码零改动）。
+
+**新发现（未修，已记录）**
+- `crud.py:214 get_material_records(..., limit: int = 10_000)` 与 `crud.py:221 get_partner_records(..., limit: int = 10_000)` 的默认 limit 是 **10,000**，与服务层 5,000 上限口径不一致。今天无害，因为唯一调用方 `entity_accessor` 总是传自己封顶过的 limit（`capped = max(1, min(int(limit or MAX_ENTITIES), MAX_ENTITIES))`，`entity_accessor.py:288`）；但对未来任何直接调 crud 的代码是个陷阱。已列入 AGENTS.md「长期约束」第 206 行（commit `00f71b1`）。
 
 ---
 

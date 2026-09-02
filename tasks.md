@@ -1,5 +1,11 @@
 # tasks.md — AI 增强型数据治理 Demo（跟踪）
 
+> ⚠️ **状态：T1-T8 已全部完成并合入 main（commit `4862b7d`），本表转为历史跟踪表**
+>
+> - **引用失效**：下表「依据」的 `SPEC 2026-08-26-ai-enhanced-dg-demo-spec.md` 与 `plan.md 2026-08-26-ai-enhanced-dg-demo-plan.md` **在本仓库中不存在**（`find` 全库无匹配）。T1-T8 的正式范围依据现为 `docs/spec-data-governance.md` **v1.4 §1.4.1「AI 辅助治理层」**（2026-09-02 由 Frank 拍板补入，承认 agents / skills / llm_gateway 与 copilot / governance / owners / evidence 四路由为正式范围）。
+> - **TC 挂钩**：表中 `AIG-*` / `MAP-*` 编号出自 `TC.md`，该文件已单独标注为**非当前验收基线**（旧范围 backlog）。
+> - **当前验收基线**：SPEC v1.4 §7 各阶段内联的 `**验收**：` 判据，由根目录 `e2e_test.py`（56 项断言）与 `backend/tests/`（310 个用例）覆盖。进度与实测证据见 `WORKLOG.md`。
+
 > 依据: SPEC 2026-08-26-ai-enhanced-dg-demo-spec.md + plan.md 2026-08-26-ai-enhanced-dg-demo-plan.md
 > 状态标记: ✅ 完成 / ⏳ 进行中 / 🔮 待开始
 

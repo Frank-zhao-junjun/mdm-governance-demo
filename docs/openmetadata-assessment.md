@@ -1,5 +1,14 @@
 # OpenMetadata 参考评估
 
+> ⚠️ **状态：历史预研文档（2026-08-23），非当前集成方案**
+>
+> 两点已过期：
+>
+> 1. **评估口径过期**：本文按「物料主数据申请、审批、编码、去重、金标数据」的旧范围评估 OpenMetadata 的替代性。按 `docs/spec-data-governance.md` v1.4 §1.4，本平台现在**只做存量数据治理与数据质量管理**，申请/审批/金标/分发均已移交上游业务系统，这些对比维度不再适用。
+> 2. **代码引用失效**：文中引用的 `backend/app/api/applications.py` 已删除；OpenMetadata 集成代码本身（`services/openmetadata_sync.py`、`OM_ENABLED` / `OPENMETADATA_HOST` / `OPENMETADATA_TOKEN` 配置）也已从代码库移除，当前无任何 OM 调用路径。
+>
+> 保留价值仅剩：开放元数据标准、血缘与数据质量观测的**外部参考资料**。若要重新评估集成，需按 v1.4 范围重做，不要直接沿用本文结论。
+
 > 评估日期：2026-08-23
 > 项目：RalphLoop MDM Governance
 > 结论性质：架构参考与技术预研结论，不等同于上线选型批准
