@@ -89,3 +89,4 @@ backend/.mdm_secret_key
 
 # CodeGraph tool artifacts
 .codegraph/
+.gstack/
