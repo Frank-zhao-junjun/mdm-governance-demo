@@ -95,7 +95,7 @@ def _clear_demo_data(db: Session) -> None:
     db.commit()
 
 
-def seed_demo_data(db: Session, total_records: int = 10_000, reset: bool = False) -> dict[str, int | bool]:
+def seed_demo_data(db: Session, total_records: int = 5_000, reset: bool = False) -> dict[str, int | bool]:
     """Create deterministic demo records, duplicate clusters, and a factory dispute."""
     if total_records < MIN_RECORDS:
         raise ValueError(f"total_records must be at least {MIN_RECORDS}")
@@ -152,7 +152,13 @@ def seed_demo_data(db: Session, total_records: int = 10_000, reset: bool = False
 def main() -> None:
     parser = argparse.ArgumentParser(description="Seed repeatable AI-governance demo data.")
     parser.add_argument("--reset", action="store_true", help="replace only prior demo_seed data")
-    parser.add_argument("--records", type=int, default=10_000, help="number of demo material records")
+    parser.add_argument(
+        "--records",
+        type=int,
+        default=5_000,
+        help="number of demo material records (default matches the 5,000-entity batch cap; "
+             "pass more, e.g. --records 10000, to demo batched scanning)",
+    )
     args = parser.parse_args()
     models.Base.metadata.create_all(bind=engine)
     db = SessionLocal()

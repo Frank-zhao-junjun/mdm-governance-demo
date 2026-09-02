@@ -1,5 +1,6 @@
 """Tests for repeatable AI-governance demo seed data (TC-AIG-003/005/008)."""
 from app import models
+from app.services.entity_accessor import MAX_ENTITIES
 from scripts.seed_demo_data import seed_demo_data
 
 
@@ -22,13 +23,13 @@ def test_seed_demo_data_creates_reproducible_materials_and_governance_scenarios(
     assert dispute.factory_agreements_json == {"FA": "agree", "FB": "oppose"}
 
 
-def test_seed_demo_data_defaults_to_ten_thousand_material_records(db):
+def test_seed_demo_data_defaults_to_the_batch_cap_so_whole_table_scans_are_not_rejected(db):
     summary = seed_demo_data(db)
 
-    assert summary == {"created": True, "material_records": 10_000}
+    assert summary == {"created": True, "material_records": MAX_ENTITIES}
     assert db.query(models.MaterialRecord).filter(
         models.MaterialRecord.source_system == "demo_seed"
-    ).count() == 10_000
+    ).count() == MAX_ENTITIES
 
 
 def test_seed_demo_data_includes_strength_unit_and_duplicate_cluster_samples(db):

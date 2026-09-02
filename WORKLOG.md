@@ -8,6 +8,21 @@
 
 ## 2026-09-02
 
+### 5,000 实体上限五处口径对齐 + WORKLOG 去污染
+
+**背景**：AGENTS.md 曾记录两处口径漂移——`seed_demo_data.py` 默认播 10,000 条超过 5,000 检测上限（默认参数播种后整表检测被拒）；`crud.get_material_records` / `get_partner_records` 默认 `limit=10_000`，新代码直接调用可绕过上限。
+
+**做了什么**
+- `crud.py` 两个实体查询默认 `limit` 10,000 → 5,000。
+- `seed_demo_data.py` 函数与 CLI `--records` 默认 10,000 → 5,000：默认参数播种后可直接整表跑质量检测；要演示超限拒绝与分批扫描须显式 `--records 10000`。
+- `test_seed_demo_data.py` 默认量断言改为绑定 `entity_accessor.MAX_ENTITIES`，播种默认量与上限漂移即测试失败；`test_demo_e2e.py` S6 显式 `total_records=10_000`，保留「5,000 批次分批扫描」的测试意图。
+- `AGENTS.md` 两条 ⚠️ 漂移警告替换为五处对齐后的新口径；`docs/demo-script.md` 播种说明同步为 5,000。
+- WORKLOG 去污染：两条 SAP 知识库日志（P0 / P1-P2 专题增补执行）误写入本文件——引用路径全属 `D:/03--SAP知识库` 与本仓库不存在的 `docs/superpowers/plans/`。核实共享 WORKLOG 只有计划无执行结果后，先把执行记录补录迁入 `D:\AI\.shared\WORKLOG.md`，再 `git restore` 回 HEAD。
+
+**验证证据**
+- 后端全量 `ENV=test SQLALCHEMY_DATABASE_URL=sqlite:///:memory: python -m pytest -q`：**310/310 passed**（10.27s）。
+- 前端零改动，lint / tsc / build 无需重跑。
+
 ### SAP 知识库 P0-P1-P2 交付核验
 
 **做了什么**

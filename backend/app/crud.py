@@ -211,14 +211,14 @@ def get_latest_quality_check_batch(db: Session, entity_type: str) -> Optional[mo
 
 # ========== Stock Records ==========
 
-def get_material_records(db: Session, entity_ids: Optional[List[str]] = None, limit: int = 10_000) -> List[models.MaterialRecord]:
+def get_material_records(db: Session, entity_ids: Optional[List[str]] = None, limit: int = 5_000) -> List[models.MaterialRecord]:
     query = db.query(models.MaterialRecord)
     if entity_ids:
         query = query.filter(models.MaterialRecord.id.in_(entity_ids))
     return query.limit(limit).all()
 
 
-def get_partner_records(db: Session, entity_type: Optional[str] = None, entity_ids: Optional[List[str]] = None, limit: int = 10_000) -> List[models.PartnerRecord]:
+def get_partner_records(db: Session, entity_type: Optional[str] = None, entity_ids: Optional[List[str]] = None, limit: int = 5_000) -> List[models.PartnerRecord]:
     query = db.query(models.PartnerRecord)
     if entity_type:
         query = query.filter(models.PartnerRecord.entity_type == entity_type)

@@ -100,7 +100,7 @@ def test_tc_aig_012_ten_unfamiliar_records_are_all_suggested_or_ticketed_and_adj
 
 def test_s6_ten_thousand_seed_records_complete_a_quality_scan_within_five_minutes(db):
     """S6: the 10,000-record demo stock is fully scanned in SPEC-compliant 5,000 batches."""
-    seed_demo_data(db)
+    seed_demo_data(db, total_records=10_000)
     standard = db.query(models.DataStandard).filter(
         models.DataStandard.standard_source == "demo",
         models.DataStandard.field_name == "MEINS",
