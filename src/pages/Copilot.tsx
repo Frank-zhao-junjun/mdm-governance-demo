@@ -20,10 +20,38 @@ function level(ticket: GovernanceTicket) {
   return typeof evidence?.level === 'string' ? evidence.level : ticket.ticket_type === 'merge' ? 'L1' : 'L2';
 }
 
-function evidenceText(ticket: GovernanceTicket) {
+const RESULT_STATUS_LABELS: Record<string, string> = {
+  pass: '通过', warn: '警告', block: '阻断', suggest: '建议',
+};
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : null;
+}
+
+// 证据快照结构化渲染：质量工单为 SkillSuggestion，归并工单为 SkillResult（见 backend/app/skills/common.py）
+function EvidenceView({ ticket }: { ticket: GovernanceTicket }) {
   const evidence = ticket.evidence_json;
-  if (!evidence) return '未提供证据快照';
-  return typeof evidence.detail === 'string' ? evidence.detail : JSON.stringify(evidence);
+  if (!evidence) return <p className="text-muted-foreground">未提供证据快照</p>;
+  // SkillSuggestion：{ field, suggestion, evidence: { level, source, detail } }
+  if (typeof evidence.suggestion === 'string') {
+    const inner = asRecord(evidence.evidence);
+    return <ul className="space-y-1 text-muted-foreground">
+      {typeof evidence.field === 'string' && <li>字段：{evidence.field}</li>}
+      <li>建议：{evidence.suggestion}</li>
+      {inner && typeof inner.detail === 'string' && <li>依据：{inner.detail}{typeof inner.source === 'string' ? `（${inner.source}）` : ''}</li>}
+    </ul>;
+  }
+  // SkillResult：{ status, suggestions, conflicts }
+  if (typeof evidence.status === 'string') {
+    const conflicts = (Array.isArray(evidence.conflicts) ? evidence.conflicts : []).map(asRecord).filter((c): c is Record<string, unknown> => c !== null);
+    const suggestions = (Array.isArray(evidence.suggestions) ? evidence.suggestions : []).map(asRecord).filter((s): s is Record<string, unknown> => s !== null);
+    return <ul className="space-y-1 text-muted-foreground">
+      <li>结论：{RESULT_STATUS_LABELS[evidence.status] ?? evidence.status}</li>
+      {conflicts.map((c, i) => <li key={`c${i}`}>冲突：{[c.message, c.detail].filter((v): v is string => typeof v === 'string').join(' — ')}</li>)}
+      {suggestions.map((s, i) => typeof s.suggestion === 'string' && <li key={`s${i}`}>建议：{typeof s.field === 'string' ? `${s.field}：` : ''}{s.suggestion}</li>)}
+    </ul>;
+  }
+  return <pre className="whitespace-pre-wrap break-all text-xs text-muted-foreground">{JSON.stringify(evidence, null, 2)}</pre>;
 }
 
 export default function Copilot() {
@@ -87,7 +115,7 @@ export default function Copilot() {
             <Badge className={level(ticket) === 'L1' ? 'bg-emerald-700 hover:bg-emerald-700' : 'bg-amber-600 hover:bg-amber-600'}>{level(ticket)} 证据</Badge>
           </div>
           <div className="mt-4 grid gap-4 text-sm md:grid-cols-3">
-            <section><p className="mb-1 font-medium text-slate-700">证据链</p><p className="text-muted-foreground break-words">{evidenceText(ticket)}</p></section>
+            <section><p className="mb-1 font-medium text-slate-700">证据链</p><div className="break-words"><EvidenceView ticket={ticket} /></div></section>
             <section><p className="mb-1 font-medium text-slate-700">风险标注</p><p className="flex items-center gap-1 text-muted-foreground">{isMerge && <ShieldAlert className="size-4 text-amber-600" />}{isMerge ? '高风险：归并不会自动执行' : '中风险：需指派整改责任人'}</p></section>
             <section><p className="mb-1 font-medium text-slate-700">替代选项</p><p className="text-muted-foreground">{isMerge ? '驳回建议，保留两条记录；或改判后补充证据。' : '驳回并补充规则，或改判为人工复核。'}</p></section>
           </div>
