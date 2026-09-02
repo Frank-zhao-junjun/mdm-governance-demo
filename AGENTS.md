@@ -203,6 +203,7 @@ python -m pytest tests/test_auth.py # 单文件
 - CORS 在 DEBUG 模式下允许 localhost:3000 和 localhost:8000
 - 实体批量操作上限 **5,000**（`entity_accessor.MAX_ENTITIES` / `duplicate_detector.MAX_ENTITIES_PER_RUN` / `csv_importer.MAX_ROWS` 三处口径一致，SPEC §7 Phase 2「5000 上限生效」；超限拒绝并要求分批，不自动切批）
 - ⚠️ `scripts/seed_demo_data.py` 默认播 **10,000** 条 `material_records`，**超过上面的 5,000 上限**——用默认参数播种后整表质量检测会直接被拒。演示时用 `--records 5000` 以内，或按 `entity_ids` 分批检测
+- ⚠️ `crud.get_material_records` / `crud.get_partner_records` 的默认 `limit` 是 **10,000**，与 5,000 上限口径不一致。当前无害，因为唯一调用方 `entity_accessor` 总是传自己封顶过的 limit（`entity_accessor.py:288`）；**新代码若直接调这两个 crud 函数会绕过上限**，必须显式传 ≤5,000 的 limit
 
 ## 已知问题与历史教训
 
