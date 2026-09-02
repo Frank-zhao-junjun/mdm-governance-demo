@@ -1,5 +1,13 @@
 # TC.md - Manufacturing MDM Governance Test Cases (TDD Backlog)
 
+> ⚠️ **状态：非当前验收基线（next-iteration backlog）**
+>
+> 本文档的用例整体围绕 **golden record（金标数据）**、**跨系统编码映射与发布事件**、**数据新增申请批次** 编写。按 `docs/spec-data-governance.md` v1.4 §1.4，这些**业务**能力不在本平台服务边界内，相关模块已从代码库移除。
+>
+> 它同时是代码库 **AI 辅助治理层**（`app/skills/`、`app/agents/`、`api/copilot.py`、`api/governance.py`、`api/owners.py`、`api/evidence.py`，以及 `quality_ticket` / `merge_ticket` / `key_mapping` / `agent_trace` / `governance_owner` / `approval_evidence` 六张表）所实现用例的出处——文中 TC-AIG-\* / TC-MAP-\* 编号即被这些模块的 docstring 直接引用。该层的定位已由 SPEC v1.4 §1.4.1 正式承认（治理裁决/归并建议，Agent 只出建议、归并仅返回 ready，非业务审批）。
+>
+> **当前唯一验收基线**：`docs/spec-data-governance.md` v1.4 §7 各阶段内联的 `**验收**：` 判据，由根目录 `e2e_test.py`（56 项断言）与 `backend/tests/`（310 个用例）覆盖。不要拿本文档判定当前实现的完成度。
+
 ## 1. Scope
 
 This test case set is for next-iteration governance goals:
