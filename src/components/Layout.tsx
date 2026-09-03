@@ -26,10 +26,10 @@ const NAV_ITEMS: NavItem[] = [
   { path: '/quality/standards', label: '数据标准管理', icon: ListChecks },
   { path: '/governance', label: '治理驾驶舱', icon: LayoutDashboard },
   { path: '/copilot', label: 'Copilot 裁决', icon: Scale },
-  { path: '/agents', label: 'Agent 活动流', icon: Bot },
   { path: '/disputes', label: '权责冲突', icon: AlertTriangle },
   { path: '/quality/checks', label: '质量检测', icon: ShieldCheck },
   { path: '/quality/suspected', label: '疑似错误', icon: AlertTriangle },
+  { path: '/agents', label: 'Agent 活动流', icon: Bot },
 ];
 
 function resolveTitle(pathname: string): string {
@@ -57,8 +57,8 @@ const Layout: React.FC = () => {
               <Database className="w-6 h-6" />
             </div>
             <div>
-              <h1 className="text-lg font-bold">RalphLoop</h1>
-              <p className="text-xs text-gray-400">存量数据治理</p>
+              <h1 className="text-lg font-bold">MDM</h1>
+              <p className="text-xs text-gray-400">AI数据治理</p>
             </div>
           </div>
 
