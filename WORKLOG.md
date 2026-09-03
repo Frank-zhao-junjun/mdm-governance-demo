@@ -6,6 +6,28 @@
 
 ---
 
+## 2026-09-03
+
+### 七页浏览器人工走查完成 + Copilot 演示造数脚本
+
+**做了什么**
+- 走查全部 7 个页面（admin001 登录）：`/quality/checks`、`/quality/checks/report`、`/quality/suspected`、`/copilot`、`/governance`、`/agents`、`/disputes`——关闭 2026-09-02 遗留项 #2（Phase 2/3 三页）与 T7 遗留（四 AI 页视觉走查）。
+- 新增 `backend/scripts/seed_demo_tickets.py`：给 Copilot 页造待裁决工单（M10019/M10005 强度冲突 L1 归并单 + MDM0001/MDM0002 缺 MEINS 质量单），按 `--suffix`（默认当天）幂等；解决演示库 Copilot 页空态。
+
+**验证证据**
+- 质量检测实测一轮：308 项 / 通过 302 / 失败 6 / 跳过 22（22 实体 × 14 生效规则 + WERKS×22 无数据源），结果表 6 条明细与报告页五个统计卡、两张环形图（SVG 644×224）、按规则统计、Top 问题全部一致，零 console 报错。
+- 疑似错误页：列表/筛选/分页、详情弹窗（判定依据、相似对、保留规则、证据表）、处理弹窗三值（确认/已解决/误报）+ 预填模板，取消未改数据。
+- Copilot 高风险门禁：不填意见且不勾确认点批准 → 前端拦截，红色提示 4.2s，不发 POST（MutationObserver 实测 64ms 弹出）；补意见+确认后批准 → `POST /api/copilot/merge/{id}/approve` 200，工单移出列表。JWT 过期时 401 → 自动跳 /login，行为正确。
+- 治理驾驶舱：四指标卡（质量分 90.91% / 重复率 9.09% / 待办 3 / Agent 活动 10）与实际工单一致，环形图 SVG 1034×240 渲染正常。
+- Agent 活动流：trace/模型版本/输入摘要渲染正常；权责冲突页空态文案正常，均零报错。
+- 造数脚本连跑两次：第二次 `[quality] idempotent=True`、`[merge] 已存在，跳过`；当前演示库待裁决 merge=1 quality=2（另 1 张归并单已批准留痕）。
+
+**遗留/发现**
+- favicon.ico 404（全站，`index.html` 未引图标，小问题待修）。
+- 偶发：页面久置后按钮点击无响应（React 事件派发失效，无 toast 无请求，手动调 fiber onClick 正常，重载页面即恢复）——本会话观察到 3 次，干净环境复现不出；疑似 Vite dev server 长跑 + HMR 状态劣化，演示前建议重启 dev server 或直接用 `pnpm build` 产物，标记待观察。
+- 权责冲突页当前无跨工厂争议演示数据（空态正常渲染）；如演示剧本需要 S6 会签场景，需给造数脚本补争议数据（扩范围，另行决定）。
+- 活动流存在两条同 trace 的 quality-agent 记录（造数脚本重跑副产物，非功能缺陷）。
+
 ## 2026-09-02
 
 ### SAP Note 精确号路由与长尾查询白名单
@@ -281,7 +303,7 @@ SPEC 无独立验收章节，判据取自 §7 各阶段内联的 `**验收**：`
 ## 剩余项
 
 1. ~~「待用户决策」的处置口径~~ —— **已关闭**（2026-09-02 Frank 拍板：保留 + SPEC v1.4，Phase 0 验收判据已改写，Phase 0 判绿）。
-2. `/quality/suspected`、`/quality/checks`、`/quality/checks/report` 三个新页面尚未在浏览器里人工走一遍（目前只有 `tsc`/`lint`/`build` 三门）。
+2. ~~`/quality/suspected`、`/quality/checks`、`/quality/checks/report` 三个新页面尚未在浏览器里人工走一遍~~ —— **已关闭**（2026-09-03 七页人工走查完成，含 T7 四个 AI 页，详见当日条目）。
 3. 「写操作有审计记录」「Mock 数据入库」两条判据没有 HTTP 观测面（无审计查询端点、无存量记录列表端点），只由 pytest 覆盖。若要变成 e2e 可验，需要补只读的 `GET /api/audit-logs` 与存量列表端点——但这属于扩范围，先不动。
 
 ## 常用命令
