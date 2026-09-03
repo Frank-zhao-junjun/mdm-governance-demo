@@ -1,0 +1,617 @@
+﻿[
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\app\\.gitignore",
+        "bytes":  692,
+        "expected":  692
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\app\\backend\\app\\api\\__init__.py",
+        "bytes":  26,
+        "expected":  26
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\app\\backend\\app\\api\\applications.py",
+        "bytes":  16861,
+        "expected":  16861
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\app\\backend\\app\\api\\classifications.py",
+        "bytes":  2299,
+        "expected":  2299
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\app\\backend\\app\\api\\dashboard.py",
+        "bytes":  1494,
+        "expected":  1494
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\app\\backend\\app\\api\\golden_records.py",
+        "bytes":  1668,
+        "expected":  1668
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\app\\backend\\app\\core\\auth.py",
+        "bytes":  4729,
+        "expected":  4729
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\app\\backend\\app\\core\\config.py",
+        "bytes":  892,
+        "expected":  892
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\app\\backend\\app\\core\\database.py",
+        "bytes":  842,
+        "expected":  842
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\app\\backend\\app\\crud.py",
+        "bytes":  9079,
+        "expected":  9079
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\app\\backend\\app\\main.py",
+        "bytes":  3110,
+        "expected":  3110
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\app\\backend\\app\\models.py",
+        "bytes":  9892,
+        "expected":  9892
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\app\\backend\\app\\schemas.py",
+        "bytes":  5836,
+        "expected":  5836
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\app\\backend\\app\\services\\audit_service.py",
+        "bytes":  3318,
+        "expected":  3318
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\app\\backend\\app\\services\\btp_mock.py",
+        "bytes":  2100,
+        "expected":  2100
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\app\\backend\\app\\services\\code_generator.py",
+        "bytes":  2790,
+        "expected":  2790
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\app\\backend\\app\\services\\duplicate_detector.py",
+        "bytes":  3679,
+        "expected":  3679
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\app\\backend\\app\\services\\material_validator.py",
+        "bytes":  3638,
+        "expected":  3638
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\app\\backend\\app\\services\\openmetadata_sync.py",
+        "bytes":  4492,
+        "expected":  4492
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\app\\backend\\init_db.py",
+        "bytes":  4370,
+        "expected":  4370
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\app\\backend\\pytest.ini",
+        "bytes":  368,
+        "expected":  368
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\app\\backend\\requirements.txt",
+        "bytes":  247,
+        "expected":  247
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\app\\backend\\tests\\__init__.py",
+        "bytes":  53,
+        "expected":  53
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\app\\backend\\tests\\conftest.py",
+        "bytes":  4800,
+        "expected":  4800
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\app\\backend\\tests\\test_api.py",
+        "bytes":  16826,
+        "expected":  16826
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\app\\backend\\tests\\test_audit_service.py",
+        "bytes":  9785,
+        "expected":  9785
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\app\\backend\\tests\\test_auth.py",
+        "bytes":  7608,
+        "expected":  7608
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\app\\backend\\tests\\test_code_generator.py",
+        "bytes":  6208,
+        "expected":  6208
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\app\\backend\\tests\\test_crud.py",
+        "bytes":  12091,
+        "expected":  12091
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\app\\backend\\tests\\test_duplicate_detector.py",
+        "bytes":  10274,
+        "expected":  10274
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\app\\backend\\tests\\test_material_validator.py",
+        "bytes":  12030,
+        "expected":  12030
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\app\\components.json",
+        "bytes":  461,
+        "expected":  461
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\app\\e2e_test.py",
+        "bytes":  9780,
+        "expected":  9780
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\app\\eslint.config.js",
+        "bytes":  616,
+        "expected":  616
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\app\\index.html",
+        "bytes":  311,
+        "expected":  311
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\app\\info.md",
+        "bytes":  1385,
+        "expected":  1385
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\app\\package.json",
+        "bytes":  2603,
+        "expected":  2603
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\app\\package-lock.json",
+        "bytes":  304627,
+        "expected":  304627
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\app\\postcss.config.js",
+        "bytes":  80,
+        "expected":  80
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\app\\README.md",
+        "bytes":  2555,
+        "expected":  2555
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\app\\src\\App.css",
+        "bytes":  606,
+        "expected":  606
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\app\\src\\App.tsx",
+        "bytes":  1441,
+        "expected":  1441
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\app\\src\\components\\Layout.tsx",
+        "bytes":  3539,
+        "expected":  3539
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\app\\src\\components\\ui\\accordion.tsx",
+        "bytes":  2039,
+        "expected":  2039
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\app\\src\\components\\ui\\alert.tsx",
+        "bytes":  1614,
+        "expected":  1614
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\app\\src\\components\\ui\\alert-dialog.tsx",
+        "bytes":  3850,
+        "expected":  3850
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\app\\src\\components\\ui\\aspect-ratio.tsx",
+        "bytes":  280,
+        "expected":  280
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\app\\src\\components\\ui\\avatar.tsx",
+        "bytes":  1083,
+        "expected":  1083
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\app\\src\\components\\ui\\badge.tsx",
+        "bytes":  1633,
+        "expected":  1633
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\app\\src\\components\\ui\\breadcrumb.tsx",
+        "bytes":  2357,
+        "expected":  2357
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\app\\src\\components\\ui\\button.tsx",
+        "bytes":  2218,
+        "expected":  2218
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\app\\src\\components\\ui\\button-group.tsx",
+        "bytes":  2209,
+        "expected":  2209
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\app\\src\\components\\ui\\calendar.tsx",
+        "bytes":  7793,
+        "expected":  7793
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\app\\src\\components\\ui\\card.tsx",
+        "bytes":  1987,
+        "expected":  1987
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\app\\src\\components\\ui\\carousel.tsx",
+        "bytes":  5542,
+        "expected":  5542
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\app\\src\\components\\ui\\chart.tsx",
+        "bytes":  10069,
+        "expected":  10069
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\app\\src\\components\\ui\\checkbox.tsx",
+        "bytes":  1219,
+        "expected":  1219
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\app\\src\\components\\ui\\collapsible.tsx",
+        "bytes":  786,
+        "expected":  786
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\app\\src\\components\\ui\\command.tsx",
+        "bytes":  4804,
+        "expected":  4804
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\app\\src\\components\\ui\\context-menu.tsx",
+        "bytes":  8274,
+        "expected":  8274
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\app\\src\\components\\ui\\dialog.tsx",
+        "bytes":  3981,
+        "expected":  3981
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\app\\src\\components\\ui\\drawer.tsx",
+        "bytes":  4255,
+        "expected":  4255
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\app\\src\\components\\ui\\dropdown-menu.tsx",
+        "bytes":  8410,
+        "expected":  8410
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\app\\src\\components\\ui\\empty.tsx",
+        "bytes":  2396,
+        "expected":  2396
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\app\\src\\components\\ui\\field.tsx",
+        "bytes":  6145,
+        "expected":  6145
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\app\\src\\components\\ui\\form.tsx",
+        "bytes":  3764,
+        "expected":  3764
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\app\\src\\components\\ui\\hover-card.tsx",
+        "bytes":  1532,
+        "expected":  1532
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\app\\src\\components\\ui\\input.tsx",
+        "bytes":  962,
+        "expected":  962
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\app\\src\\components\\ui\\input-group.tsx",
+        "bytes":  5065,
+        "expected":  5065
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\app\\src\\components\\ui\\input-otp.tsx",
+        "bytes":  2240,
+        "expected":  2240
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\app\\src\\components\\ui\\item.tsx",
+        "bytes":  4494,
+        "expected":  4494
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\app\\src\\components\\ui\\kbd.tsx",
+        "bytes":  862,
+        "expected":  862
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\app\\src\\components\\ui\\label.tsx",
+        "bytes":  611,
+        "expected":  611
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\app\\src\\components\\ui\\menubar.tsx",
+        "bytes":  8380,
+        "expected":  8380
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\app\\src\\components\\ui\\navigation-menu.tsx",
+        "bytes":  6664,
+        "expected":  6664
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\app\\src\\components\\ui\\pagination.tsx",
+        "bytes":  2717,
+        "expected":  2717
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\app\\src\\components\\ui\\popover.tsx",
+        "bytes":  1635,
+        "expected":  1635
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\app\\src\\components\\ui\\progress.tsx",
+        "bytes":  726,
+        "expected":  726
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\app\\src\\components\\ui\\radio-group.tsx",
+        "bytes":  1466,
+        "expected":  1466
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\app\\src\\components\\ui\\resizable.tsx",
+        "bytes":  1980,
+        "expected":  1980
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\app\\src\\components\\ui\\scroll-area.tsx",
+        "bytes":  1645,
+        "expected":  1645
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\app\\src\\components\\ui\\select.tsx",
+        "bytes":  6344,
+        "expected":  6344
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\app\\src\\components\\ui\\separator.tsx",
+        "bytes":  699,
+        "expected":  699
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\app\\src\\components\\ui\\sheet.tsx",
+        "bytes":  4076,
+        "expected":  4076
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\app\\src\\components\\ui\\sidebar.tsx",
+        "bytes":  21638,
+        "expected":  21638
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\app\\src\\components\\ui\\skeleton.tsx",
+        "bytes":  276,
+        "expected":  276
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\app\\src\\components\\ui\\slider.tsx",
+        "bytes":  1996,
+        "expected":  1996
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\app\\src\\components\\ui\\sonner.tsx",
+        "bytes":  1020,
+        "expected":  1020
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\app\\src\\components\\ui\\spinner.tsx",
+        "bytes":  331,
+        "expected":  331
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\app\\src\\components\\ui\\switch.tsx",
+        "bytes":  1177,
+        "expected":  1177
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\app\\src\\components\\ui\\table.tsx",
+        "bytes":  2434,
+        "expected":  2434
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\app\\src\\components\\ui\\tabs.tsx",
+        "bytes":  1969,
+        "expected":  1969
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\app\\src\\components\\ui\\textarea.tsx",
+        "bytes":  759,
+        "expected":  759
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\app\\src\\components\\ui\\toggle.tsx",
+        "bytes":  1556,
+        "expected":  1556
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\app\\src\\components\\ui\\toggle-group.tsx",
+        "bytes":  2300,
+        "expected":  2300
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\app\\src\\components\\ui\\tooltip.tsx",
+        "bytes":  1892,
+        "expected":  1892
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\app\\src\\hooks\\use-mobile.ts",
+        "bytes":  565,
+        "expected":  565
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\app\\src\\index.css",
+        "bytes":  2118,
+        "expected":  2118
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\app\\src\\main.tsx",
+        "bytes":  318,
+        "expected":  318
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\app\\src\\pages\\ApplicationDetail.tsx",
+        "bytes":  7831,
+        "expected":  7831
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\app\\src\\pages\\Applications.tsx",
+        "bytes":  5396,
+        "expected":  5396
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\app\\src\\pages\\AuditTrace.tsx",
+        "bytes":  3591,
+        "expected":  3591
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\app\\src\\pages\\Classifications.tsx",
+        "bytes":  2425,
+        "expected":  2425
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\app\\src\\pages\\Dashboard.tsx",
+        "bytes":  6368,
+        "expected":  6368
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\app\\src\\pages\\GoldenRecords.tsx",
+        "bytes":  3434,
+        "expected":  3434
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\app\\src\\pages\\Home.tsx",
+        "bytes":  425,
+        "expected":  425
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\app\\src\\pages\\Login.tsx",
+        "bytes":  2749,
+        "expected":  2749
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\app\\src\\pages\\NewApplication.tsx",
+        "bytes":  10202,
+        "expected":  10202
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\app\\src\\types\\api.ts",
+        "bytes":  3262,
+        "expected":  3262
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\app\\tailwind.config.js",
+        "bytes":  2777,
+        "expected":  2777
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\app\\tsconfig.app.json",
+        "bytes":  815,
+        "expected":  815
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\app\\tsconfig.json",
+        "bytes":  232,
+        "expected":  232
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\app\\tsconfig.node.json",
+        "bytes":  653,
+        "expected":  653
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\app\\vite.config.ts",
+        "bytes":  501,
+        "expected":  501
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\bg\\backcover_bg.png",
+        "bytes":  645342,
+        "expected":  645342
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\bg\\body_bg.png",
+        "bytes":  90679,
+        "expected":  90679
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\bg\\cover_bg.png",
+        "bytes":  632921,
+        "expected":  632921
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\ç©æä¸»æ°æ®æ²»çè°ç é®å·.docx",
+        "bytes":  1060243,
+        "expected":  1060243
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\gen_bg.py",
+        "bytes":  6332,
+        "expected":  6332
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\OpenMetadata_å¶é ä¸ç©ææ²»ç_ææ¯å®æ½æå.md",
+        "bytes":  55323,
+        "expected":  55323
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\QA_Review_Report.md",
+        "bytes":  19313,
+        "expected":  19313
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\report.md",
+        "bytes":  27070,
+        "expected":  27070
+    },
+    {
+        "path":  "e:\\14 - 数据治理\\Project\\kimi_files\\SAP_Ariba_OpenMetadata_éææ¹æ¡.md",
+        "bytes":  40863,
+        "expected":  40863
+    }
+]

@@ -93,3 +93,6 @@ backend/.mdm_secret_key
 
 # Browser QA artifacts
 .playwright-mcp/
+
+# Embedded git repo (not a submodule)
+Project/kimi_files/app/

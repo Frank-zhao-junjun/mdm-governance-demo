@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family:"Microsoft YaHei","PingFang SC",sans-serif;
+    background:#F0F4F8; width:760px; height:500px; padding:20px; color:#1E293B;
+  }
+  .panel {
+    background:#fff; border-radius:12px; overflow:hidden; height:100%;
+    box-shadow:0 4px 20px rgba(30,58,92,.10); border:1px solid #E2E8F0;
+    display:flex; flex-direction:column;
+  }
+  .top-bar {
+    padding:14px 20px; border-bottom:1px solid #EDF1F5; display:flex; align-items:center; gap:12px;
+  }
+  .top-bar .title { font-size:16px; font-weight:700; color:#1B3A5C; }
+  .top-bar .badge {
+    background:#FEE2E2; color:#DC2626; font-size:12px; font-weight:600;
+    padding:2px 10px; border-radius:10px;
+  }
+  .top-bar .filters { margin-left:auto; display:flex; gap:8px; }
+  .top-bar .filter {
+    font-size:12px; padding:4px 12px; border-radius:6px; border:1px solid #E2E8F0;
+    color:#64748B; background:#fff;
+  }
+  .filter.active { background:#EBF5FF; color:#2E75B6; border-color:#2E75B6; }
+  .list { flex:1; padding:8px 16px; overflow:hidden; }
+  .item {
+    display:flex; align-items:center; gap:14px; padding:13px 14px; border-radius:10px;
+    margin-bottom:8px; border:1px solid #EDF1F5; transition:background .15s;
+  }
+  .item:hover { background:#F8FAFC; }
+  .severity { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+  .sev-red { background:#EF4444; box-shadow:0 0 0 3px rgba(239,68,68,.15); }
+  .sev-amber { background:#F59E0B; box-shadow:0 0 0 3px rgba(245,158,11,.15); }
+  .sev-blue { background:#3B82F6; box-shadow:0 0 0 3px rgba(59,130,246,.15); }
+  .item-content { flex:1; min-width:0; }
+  .item-title { font-size:13.5px; font-weight:600; color:#1E293B; margin-bottom:3px; }
+  .item-desc { font-size:12px; color:#64748B; }
+  .item-meta { display:flex; align-items:center; gap:12px; flex-shrink:0; }
+  .item-time { font-size:11px; color:#94A3B8; }
+  .btn-handle {
+    font-size:12px; padding:5px 16px; border-radius:6px; border:1px solid #2E75B6;
+    color:#2E75B6; background:#fff; cursor:pointer; font-weight:500; font-family:inherit;
+  }
+  .btn-handle.red { border-color:#EF4444; color:#EF4444; }
+  .summary-bar {
+    padding:10px 20px; border-top:1px solid #EDF1F5; background:#F8FAFC;
+    display:flex; gap:24px; font-size:12px; color:#64748B;
+  }
+  .summary-bar b { color:#1E293B; }
+</style>
+</head>
+<body>
+<div class="panel">
+  <div class="top-bar">
+    <span class="title">主动治理 · 今日待办</span>
+    <span class="badge">5</span>
+    <div class="filters">
+      <span class="filter active">全部</span>
+      <span class="filter">重复预警</span>
+      <span class="filter">分发失败</span>
+      <span class="filter">质量报告</span>
+    </div>
+  </div>
+  <div class="list">
+    <div class="item">
+      <span class="severity sev-red"></span>
+      <div class="item-content">
+        <div class="item-title">物料重复预警</div>
+        <div class="item-desc">发现 12 组疑似重复物料，最高相似度 96%，待确认合并</div>
+      </div>
+      <div class="item-meta">
+        <span class="item-time">10 分钟前</span>
+        <button class="btn-handle red">立即处理</button>
+      </div>
+    </div>
+    <div class="item">
+      <span class="severity sev-red"></span>
+      <div class="item-content">
+        <div class="item-title">分发失败告警</div>
+        <div class="item-desc">SAP 接口超时，3 条物料未同步，已自动重试 2 次</div>
+      </div>
+      <div class="item-meta">
+        <span class="item-time">32 分钟前</span>
+        <button class="btn-handle red">立即处理</button>
+      </div>
+    </div>
+    <div class="item">
+      <span class="severity sev-amber"></span>
+      <div class="item-content">
+        <div class="item-title">数据质量周报</div>
+        <div class="item-desc">本周质量得分 92 分，较上周 +3，完整率提升至 96.4%</div>
+      </div>
+      <div class="item-meta">
+        <span class="item-time">今天 08:00</span>
+        <button class="btn-handle">查看报告</button>
+      </div>
+    </div>
+    <div class="item">
+      <span class="severity sev-amber"></span>
+      <div class="item-content">
+        <div class="item-title">清洗方案待确认</div>
+        <div class="item-desc">客户名称空值 47 条，AI 建议按税号补全，需人工确认后执行</div>
+      </div>
+      <div class="item-meta">
+        <span class="item-time">昨天 16:20</span>
+        <button class="btn-handle">审核方案</button>
+      </div>
+    </div>
+    <div class="item">
+      <span class="severity sev-blue"></span>
+      <div class="item-content">
+        <div class="item-title">标准体系调整建议</div>
+        <div class="item-desc">阀门分类新增 2 个子类，已生成变更建议，待评审</div>
+      </div>
+      <div class="item-meta">
+        <span class="item-time">昨天 11:05</span>
+        <button class="btn-handle">查看建议</button>
+      </div>
+    </div>
+  </div>
+  <div class="summary-bar">
+    <span>本周已处理 <b>38</b> 项</span>
+    <span>平均响应 <b>14 分钟</b></span>
+    <span>自动修复率 <b>71%</b></span>
+  </div>
+</div>
+</body>
+</html>

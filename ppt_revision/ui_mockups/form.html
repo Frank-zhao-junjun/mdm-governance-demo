@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family:"Microsoft YaHei","PingFang SC",sans-serif;
+    background:#F0F4F8; width:520px; height:520px; padding:20px; color:#1E293B;
+  }
+  .panel {
+    background:#fff; border-radius:12px; overflow:hidden; height:100%;
+    box-shadow:0 4px 20px rgba(30,58,92,.10); border:1px solid #E2E8F0;
+    display:flex; flex-direction:column;
+  }
+  .ai-banner {
+    background:linear-gradient(135deg,#2E75B6,#1B3A5C); color:#fff;
+    padding:12px 18px; font-size:13px; display:flex; align-items:center; gap:8px;
+  }
+  .ai-banner .spark { color:#FCD34D; font-size:15px; }
+  .ai-banner .sub { font-size:11px; opacity:.75; margin-left:auto; }
+  .form-body { flex:1; padding:16px 18px; }
+  .form-row { display:flex; gap:0; border-bottom:1px solid #EDF1F5; }
+  .form-row:last-child { border-bottom:none; }
+  .field { flex:1; padding:11px 12px; display:flex; flex-direction:column; gap:3px; }
+  .field:first-child { border-right:1px solid #EDF1F5; }
+  .field .label { font-size:11px; color:#94A3B8; }
+  .field .value { font-size:14px; color:#1E293B; font-weight:600; }
+  .field .value.ai { color:#2E75B6; }
+  .field .value .ai-dot {
+    display:inline-block; width:6px; height:6px; border-radius:50%;
+    background:#2BA89C; margin-right:4px; vertical-align:middle;
+  }
+  .form-actions {
+    padding:12px 18px; border-top:1px solid #EDF1F5; display:flex; gap:10px;
+    background:#F8FAFC;
+  }
+  .btn-confirm {
+    flex:1; background:linear-gradient(135deg,#2E75B6,#1B3A5C); color:#fff; border:none;
+    padding:10px; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit;
+  }
+  .btn-edit {
+    background:#fff; border:1px solid #CBD5E1; color:#475569;
+    padding:10px 20px; border-radius:8px; font-size:13px; cursor:pointer; font-family:inherit;
+  }
+</style>
+</head>
+<body>
+<div class="panel">
+  <div class="ai-banner">
+    <span class="spark">✦</span>
+    <span>AI 已根据铭牌自动填充 6 个字段，请核对确认</span>
+    <span class="sub">耗时 1.2 秒</span>
+  </div>
+  <div class="form-body">
+    <div class="form-row">
+      <div class="field"><span class="label">物料编码</span><span class="value">10-y-088</span></div>
+      <div class="field"><span class="label">物料名称</span><span class="value ai"><span class="ai-dot"></span>六角头螺栓</span></div>
+    </div>
+    <div class="form-row">
+      <div class="field"><span class="label">规格型号</span><span class="value ai"><span class="ai-dot"></span>M10×20</span></div>
+      <div class="field"><span class="label">材质</span><span class="value ai"><span class="ai-dot"></span>碳钢</span></div>
+    </div>
+    <div class="form-row">
+      <div class="field"><span class="label">表面处理</span><span class="value ai"><span class="ai-dot"></span>发黑</span></div>
+      <div class="field"><span class="label">计量单位</span><span class="value">PC</span></div>
+    </div>
+    <div class="form-row">
+      <div class="field"><span class="label">性能等级</span><span class="value ai"><span class="ai-dot"></span>8.8级</span></div>
+      <div class="field"><span class="label">执行标准</span><span class="value ai"><span class="ai-dot"></span>GB5783</span></div>
+    </div>
+    <div class="form-row">
+      <div class="field"><span class="label">物料分类</span><span class="value">紧固件 / 螺栓</span></div>
+      <div class="field"><span class="label">采购类型</span><span class="value">外购</span></div>
+    </div>
+  </div>
+  <div class="form-actions">
+    <button class="btn-edit">手动修改</button>
+    <button class="btn-confirm">确认无误，提交申请</button>
+  </div>
+</div>
+</body>
+</html>

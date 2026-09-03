@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#F2F4F7;font-family:"Microsoft YaHei",sans-serif}
+.icon-wrap{width:120px;height:120px;display:flex;align-items:center;justify-content:center;page-break-after:always}
+.icon-circle{width:80px;height:80px;border-radius:50%;display:flex;align-items:center;justify-content:center}
+.c-blue{background:linear-gradient(135deg,#EBF2FB,#D6E6F7)}
+.c-teal{background:linear-gradient(135deg,#E4F5F3,#CDEDEA)}
+svg{width:38px;height:38px;stroke-width:2;fill:none;stroke-linecap:round;stroke-linejoin:round}
+.s-blue{stroke:#2E75B6}
+.s-teal{stroke:#2E9E97}
+</style></head><body>
+
+<!-- 1. 多模态录入: camera -->
+<div class="icon-wrap" id="i1"><div class="icon-circle c-blue"><svg class="s-blue" viewBox="0 0 24 24">
+<path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/>
+</svg></div></div>
+
+<!-- 2. 智能查重: duplicate -->
+<div class="icon-wrap" id="i2"><div class="icon-circle c-teal"><svg class="s-teal" viewBox="0 0 24 24">
+<rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+</svg></div></div>
+
+<!-- 3. 填单辅助: edit form -->
+<div class="icon-wrap" id="i3"><div class="icon-circle c-blue"><svg class="s-blue" viewBox="0 0 24 24">
+<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="13" y2="17"/>
+</svg></div></div>
+
+<!-- 4. 多模态大模型: sparkle -->
+<div class="icon-wrap" id="i4"><div class="icon-circle c-blue"><svg class="s-blue" viewBox="0 0 24 24">
+<path d="M12 2l2.4 7.4L22 12l-7.6 2.6L12 22l-2.4-7.4L2 12l7.6-2.6z"/>
+</svg></div></div>
+
+<!-- 5. 领域模型: book -->
+<div class="icon-wrap" id="i5"><div class="icon-circle c-teal"><svg class="s-teal" viewBox="0 0 24 24">
+<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+</svg></div></div>
+
+<!-- 6. 数据模型: grid -->
+<div class="icon-wrap" id="i6"><div class="icon-circle c-blue"><svg class="s-blue" viewBox="0 0 24 24">
+<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>
+</svg></div></div>
+
+<!-- 7. 本体模型: hierarchy -->
+<div class="icon-wrap" id="i7"><div class="icon-circle c-teal"><svg class="s-teal" viewBox="0 0 24 24">
+<circle cx="12" cy="5" r="2.5"/><circle cx="5" cy="19" r="2.5"/><circle cx="19" cy="19" r="2.5"/><path d="M12 7.5v4M12 11.5H5v5M12 11.5h7v5"/>
+</svg></div></div>
+
+<!-- 8. 知识库+向量库: database search -->
+<div class="icon-wrap" id="i8"><div class="icon-circle c-blue"><svg class="s-blue" viewBox="0 0 24 24">
+<ellipse cx="11" cy="5" rx="7" ry="2.5"/><path d="M4 5v6c0 1.4 3.1 2.5 7 2.5s7-1.1 7-2.5V5"/><path d="M4 11v6c0 1.4 3.1 2.5 7 2.5 1 0 2-.1 2.8-.2"/><circle cx="18" cy="18" r="3"/><line x1="20.5" y1="20.5" x2="22" y2="22"/>
+</svg></div></div>
+
+<!-- 9. 白盒可追溯: eye -->
+<div class="icon-wrap" id="i9"><div class="icon-circle c-blue"><svg class="s-blue" viewBox="0 0 24 24">
+<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+</svg></div></div>
+
+<!-- 10. 人在回路: user check -->
+<div class="icon-wrap" id="i10"><div class="icon-circle c-teal"><svg class="s-teal" viewBox="0 0 24 24">
+<path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><polyline points="17 11 19 13 23 9"/>
+</svg></div></div>
+
+<!-- 11. 权限与审计: shield -->
+<div class="icon-wrap" id="i11"><div class="icon-circle c-blue"><svg class="s-blue" viewBox="0 0 24 24">
+<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/>
+</svg></div></div>
+
+</body></html>
