@@ -8,6 +8,21 @@
 
 ## 2026-09-02
 
+### SAP Note 精确号路由与长尾查询白名单
+
+**做了什么**
+- `D:/03--SAP知识库/scripts/search.py` 增加 SAP Note/OSS Note 精确号识别，优先查询 `sap_notes_index.json`；无引用时不返回 BM25 近似结果。
+- 新增 `D:/03--SAP知识库/scripts/long_tail_rules.json`，仅保留两条窄评测有效的完整查询重写，不扩大通用中文别名表。
+- 评测与 L1 JSON 结果增加路由标识，便于区分精确 Note 与普通检索。
+
+**验证证据**
+- Note `0202111` 命中 `sap_note_exact`；Note `3299898` 无本地引用时返回 0；普通 Fiori 查询仍为 `standard`。
+- `py_compile`、查询路由 smoke test、`check_index.py` 均通过。
+- top=10 对照 48/67 → 59/67；未将不同 top 口径混入 top=5 基线。
+
+**遗留/决策**
+- 仍需后续单独处理 SAP for Me/Support Portal 的 Note 外部路由和剩余英文长尾；当前不继续无差别扩大词表。
+
 ### 5,000 实体上限五处口径对齐 + WORKLOG 去污染
 
 **背景**：AGENTS.md 曾记录两处口径漂移——`seed_demo_data.py` 默认播 10,000 条超过 5,000 检测上限（默认参数播种后整表检测被拒）；`crud.get_material_records` / `get_partner_records` 默认 `limit=10_000`，新代码直接调用可绕过上限。
