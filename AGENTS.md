@@ -10,12 +10,13 @@
 
 ## 技术栈
 
-- **前端**：React 19 + TypeScript + Vite 7 + Tailwind CSS 3.4 + shadcn/ui (new-york 风格，baseColor slate，lucide 图标)
+- **前端**：React 19 + TypeScript ~5.9 + Vite 7 + Tailwind CSS 3.4 + shadcn/ui（new-york 风格，baseColor slate，lucide 图标）
   - 路由：react-router-dom v7；表单：react-hook-form + zod；图表：recharts；图标：lucide-react；通知：sonner
-- **后端**：Python 3.12 + FastAPI 0.115 + SQLAlchemy 2.0 + Pydantic v2
-  - 认证：JWT (python-jose + passlib/bcrypt)
-  - 数据库：SQLite (开发默认 `mdm_governance.db`) / PostgreSQL (生产)
-  - LLM：`app/core/llm_gateway.py`（mock 默认 / DeepSeek，15s 超时 + 熔断 + 自动降级回 mock）
+  - ESLint 9 flat config（`eslint.config.js`），typescript-eslint 8
+- **后端**：Python 3.12 + FastAPI 0.115 + SQLAlchemy 2.0 + Pydantic v2（`backend/requirements.txt` 全部精确钉版：fastapi==0.115.0、uvicorn[standard]==0.30.0、sqlalchemy==2.0.35、pydantic==2.9.0、python-jose[cryptography]==3.3.0、passlib[bcrypt]==1.7.4、bcrypt<5、psycopg2-binary==2.9.9、pytest==8.3.3、httpx==0.27.0）
+  - 认证：JWT（python-jose + passlib/bcrypt）
+  - 数据库：SQLite（开发默认 `backend/mdm_governance.db`）/ PostgreSQL（生产）
+  - LLM：`app/core/llm_gateway.py`（mock 默认 / DeepSeek，15s 超时 + 15s 熔断冷却 + 自动降级回 mock）
 - **包管理**：前端必须使用 pnpm（`package-lock.json` 为 npm 残留，以 `pnpm-lock.yaml` 为准）；后端使用 uv + `requirements.txt`
 
 ## 目录结构
@@ -31,11 +32,11 @@
 │   │                          #   QualityChecks, QualityReport, SuspectedErrors,
 │   │                          #   Copilot, GovernanceDashboard, AgentActivity,
 │   │                          #   DisputeView）
-│   ├── components/            # Layout + standards/（DataStandardFormDialog）+ shadcn/ui
+│   ├── components/            # Layout.tsx + standards/（DataStandardFormDialog）+ ui/
 │   │   └── ui/                # shadcn/ui 组件
-│   ├── hooks/                 # 自定义 hooks
+│   ├── hooks/                 # 自定义 hooks（use-mobile）
 │   ├── lib/
-│   │   ├── api.ts             # API 客户端 (fetch 封装, JWT, login/logout)
+│   │   ├── api.ts             # API 客户端（fetch 封装, JWT, login/logout）
 │   │   ├── governance.ts      # 数据标准领域 API + 表单模型
 │   │   ├── quality.ts         # 质量检测领域 API
 │   │   ├── suspected.ts       # 疑似错误领域 API
@@ -44,8 +45,10 @@
 ├── backend/                    # Python 后端
 │   ├── app/
 │   │   ├── main.py            # FastAPI 入口（注册 8 个 router，均为 /api/* 前缀；
-│   │   │                      #   /api/auth/login、/api/auth/me 认证端点；CORS；SPA fallback）
-│   │   ├── models.py          # SQLAlchemy 数据模型（4 个枚举 + 14 张表：data_standards,
+│   │   │                      #   /api/auth/login、/api/auth/me 认证端点直接定义在此；
+│   │   │                      #   CORS；SPA fallback）
+│   │   ├── models.py          # SQLAlchemy 数据模型（4 个枚举：StepName/RuleType/
+│   │   │                      #   TicketStatus/EscalationLevel + 14 张表：data_standards,
 │   │   │                      #   material_records, partner_records, quality_check_rules,
 │   │   │                      #   quality_check_batches, quality_check_results,
 │   │   │                      #   suspected_errors, audit_logs, quality_ticket,
@@ -55,7 +58,7 @@
 │   │   ├── crud.py            # 数据库 CRUD 操作
 │   │   ├── api/               # 8 个 API 路由模块
 │   │   │   ├── data_standards.py      # /api/data-standards 数据标准 CRUD（409 冲突 / 403 权限）
-│   │   │   ├── quality_checks.py      # /api/quality-checks POST run（admin/data_admin）+ rules/results/batches/report 查询
+│   │   │   ├── quality_checks.py      # /api/quality-checks POST run（require_admin 门禁）+ rules/results/batches/report 查询
 │   │   │   ├── suspected_errors.py    # /api/suspected-errors POST detect + GET 列表 + POST /{id}/resolve
 │   │   │   ├── data_import.py         # /api/data-import CSV 批量导入（upsert）
 │   │   │   ├── copilot.py             # /api/copilot 待办、approve/reject/overturn、问责
@@ -66,14 +69,14 @@
 │   │   │   ├── config.py      # 环境变量配置（ENV 默认 development，DEBUG=ENV==development）
 │   │   │   ├── database.py    # 数据库连接
 │   │   │   ├── auth.py        # JWT 认证（用户库为 MOCK_USERS 硬编码，4 种角色；
-│   │   │   │                      #   生产缺 MDM_SECRET_KEY 时在此 fail-fast）
+│   │   │   │                      #   生产缺 MDM_SECRET_KEY 时在此 fail-fast 抛 RuntimeError）
 │   │   │   └── llm_gateway.py # LLM 网关（mock/DeepSeek，熔断降级，trace_id 透传）
 │   │   ├── services/          # 8 个业务服务
 │   │   │   ├── quality_engine.py      # 检测规则执行引擎
 │   │   │   ├── rule_derivation.py     # 标准 → 规则派生（required→null / pattern→format 等）
 │   │   │   ├── quality_runner.py      # 限额 → 装配 → 执行 → 单事务落库（上限 5,000 实体）
 │   │   │   ├── suspected_error_runner.py  # 疑似错误检测（三键去重 (entity_id, matched_entity_id, error_type) /
-│   │   │   │                              #   误报白名单 / 终态拦截）
+│   │   │   │                              #   误报白名单 / confirmed·resolved 终态静默跳过）
 │   │   │   ├── duplicate_detector.py  # 重复识别
 │   │   │   ├── entity_accessor.py     # 实体数据访问
 │   │   │   ├── csv_importer.py        # CSV 导入
@@ -82,41 +85,42 @@
 │   │   │   ├── common.py              # EvidenceItem / SkillSuggestion / SkillResult 契约
 │   │   │   ├── naming.py / attribute.py / unit.py / quality_rule.py
 │   │   │   ├── duplicate_match.py     # 重复匹配合并建议
-│   │   │   └── merge_executor.py      # 归并执行预检（仅 approved 状态可继续）
+│   │   │   └── merge_executor.py      # 归并执行预检（仅 approved 状态的工单可继续）
 │   │   └── agents/            # Agent 编排层
 │   │       ├── base.py                # BaseAgent：统一 trace、失败可审计返回
 │   │       ├── standard_agent.py      # 标准建议（仅输出建议）
 │   │       ├── quality_agent.py       # 创建并指派 3 天 SLA 质量工单
 │   │       ├── dedup_agent.py         # 归并建议工单（绝不执行归并）
-│   │       └── orchestrator.py        # 编排器：request_id 幂等 + 进程内锁串行化
+│   │       └── orchestrator.py        # 编排器：request_id 幂等 + 进程内 threading.Lock 串行化
 │   ├── scripts/
 │   │   └── seed_demo_data.py  # 可复现演示数据（默认 5,000 条 material_records = 批量上限，
 │   │                          #   8 个重复簇，幂等；--reset 仅清 demo_seed 数据；
 │   │                          #   演示超限拒绝须显式 --records 10000）
 │   ├── init_db.py             # 数据库初始化 + 种子数据（29 条标准 → 派生 55 条检测规则；
-│   │                          #   22 条 material_records + 40 条 partner_records，含故意脏数据）
+│   │                          #   22 条 material_records + 40 条 partner_records（20 供应商 + 20 客户），
+│   │                          #   含故意脏数据；会先 drop_all 再 create_all）
 │   ├── requirements.txt       # Python 依赖（含 pytest、httpx）
-│   ├── pytest.ini             # pytest 配置（testpaths=tests）
+│   ├── pytest.ini             # pytest 配置（testpaths=tests；app.* 的 DeprecationWarning 视为 error）
 │   ├── .env.example           # 环境变量示例
-│   └── tests/                 # 后端 pytest 测试（19 个文件，310 个用例）
+│   └── tests/                 # 后端 pytest 测试（19 个测试文件 + conftest.py，共 310 个用例）
 ├── scripts/                    # Coze 平台脚本
-│   ├── coze-preview-build.sh  # 预览构建 (pnpm install + uv pip + init_db)
-│   ├── coze-preview-run.sh    # 预览运行 (后端:8000 后台 + Vite:5000 前台)
-│   ├── coze-deploy-build.sh   # 部署构建 (pnpm build + uv pip + init_db)
-│   └── coze-deploy-run.sh     # 部署运行 (uvicorn:5000 同时服务 API+SPA)
+│   ├── coze-preview-build.sh  # 预览构建（pnpm install + uv pip + init_db）
+│   ├── coze-preview-run.sh    # 预览运行（后端:8000 后台 + Vite:5000 前台；启动前清理 5000/8000 端口残留进程）
+│   ├── coze-deploy-build.sh   # 部署构建（pnpm build + uv pip + init_db）
+│   └── coze-deploy-run.sh     # 部署运行（uvicorn:5000 同时服务 API+SPA）
 ├── docs/                      # demo-script.md（演示剧本）、spec-data-governance.md（治理 SPEC）、
-│                              #   knowledge-graph.md（旧版代码资产图谱，已滞后）
-├── vite.config.ts             # Vite 配置 (dev port 3000, proxy /api -> :8000, @ -> ./src, base './')
+│                              #   knowledge-graph.md（旧版代码资产图谱，已滞后）、openmetadata-assessment.md
+├── vite.config.ts             # Vite 配置（dev port 3000, proxy /api -> :8000, @ -> ./src, base './'）
 ├── package.json               # 前端依赖与脚本
 ├── components.json            # shadcn/ui 配置
-├── eslint.config.js           # ESLint 9 flat config
-├── tsconfig.json              # TS 项目引用（app + node 两个子配置）
+├── eslint.config.js           # ESLint 9 flat config（globalIgnores: dist、Project）
+├── tsconfig.json              # TS 项目引用（tsconfig.app.json + tsconfig.node.json 两个子配置）
 ├── .github/workflows/ci.yml   # CI（前端 lint+tsc+build / 后端 pytest）
-├── .coze                      # Coze 平台配置（preview 启用，dev/deploy 各挂 build+run 脚本）
+├── .coze                      # Coze 平台配置（preview 启用，dev/deploy 各挂 build+run 脚本；requires nodejs-24 + python-3.12）
 └── info.md                    # 项目初始化信息（脚手架组件清单）
 ```
 
-> 注意：工作区根目录还有与本应用无关的辅助/归档目录（`ppt_revision/`、`Project/`、`projects/`、`platform/`、`data/`、`graphify-out/`、`_pptx2_preview/` 等）以及多份专题研究 Markdown（PRD、ROADMAP、TC、WORKLOG 等）。本应用的代码只分布在 `src/`、`backend/`、`scripts/`；`eslint.config.js` 已忽略 `Project/`。
+> 注意：工作区根目录还有与本应用无关的辅助/归档目录（`ppt_revision/`、`Project/`、`projects/`、`platform/`、`data/`、`graphify-out/`、`_pptx2_preview/` 等）以及多份专题研究 Markdown（PRD、ROADMAP、TC、WORKLOG 等）。本应用的代码只分布在 `src/`、`backend/`、`scripts/`；`eslint.config.js` 已忽略 `Project/` 与 `dist/`。
 
 ## 关键入口
 
@@ -124,7 +128,7 @@
 - **前端 API 客户端**：`src/lib/api.ts` — 封装 fetch + JWT；领域封装在 `governance.ts` / `quality.ts` / `suspected.ts`
 - **后端入口**：`backend/app/main.py` — FastAPI app，注册 8 个 router，含 SPA fallback（`dist/` 存在时非 API 路由返回 `dist/index.html`）
 - **后端配置**：`backend/app/core/config.py` — 环境变量驱动，`ENV` 默认 `development`
-- **数据库初始化**：`backend/init_db.py` — 建表 + 种子数据
+- **数据库初始化**：`backend/init_db.py` — 建表 + 种子数据（注意：会先 drop_all 重建，勿对含数据的库执行）
 - **演示数据**：`backend/scripts/seed_demo_data.py` — 固定种子，默认幂等，`--reset` 只删演示对象
 
 ## 构建与运行命令
@@ -142,7 +146,7 @@ npx tsc --noEmit  # 类型检查（pnpm build 不含此步，验证必须单独�
 ```bash
 cd backend
 uv pip install --system -r requirements.txt
-python init_db.py                                # 初始化数据库 (SQLite)
+python init_db.py                                # 初始化数据库（SQLite；会清空重建）
 python scripts/seed_demo_data.py                 # 可选：演示数据（默认 5,000 条）
 python -m uvicorn app.main:app --reload --port 8000   # API 文档: http://localhost:8000/docs
 ```
@@ -152,7 +156,8 @@ python -m uvicorn app.main:app --reload --port 8000   # API 文档: http://local
 cd backend
 ENV=test SQLALCHEMY_DATABASE_URL="sqlite:///:memory:" python -m pytest   # 全部测试（310 个用例，约 11s）
 python -m pytest tests/test_auth.py                                       # 单文件
-# pytest.ini 将 app.* 的 DeprecationWarning 视为 error
+# pytest.ini 将 app.* 的 DeprecationWarning 视为 error；
+# 第三方告警（passlib/pkg_resources/pydantic UserWarning）已显式忽略
 ```
 
 ### CI
@@ -162,8 +167,8 @@ python -m pytest tests/test_auth.py                                       # 单�
 
 ## 预览与部署（Coze 平台）
 
-- **预览**：Vite dev server (port 5000) + FastAPI (port 8000 内部)，Vite proxy 转发 `/api`。预览端口固定 5000，**禁止使用 9000 端口**。脚本：`coze-preview-build.sh` → `coze-preview-run.sh`（启动前会清理 5000/8000 端口残留进程）
-- **部署**：uvicorn (port 5000) 同时服务 API 和 SPA 静态文件 (dist/)。脚本：`coze-deploy-build.sh` → `coze-deploy-run.sh`（`ENV=production`）
+- **预览**：Vite dev server（port 5000）+ FastAPI（port 8000 内部），Vite proxy 转发 `/api`。预览端口固定 5000，**禁止使用 9000 端口**。脚本：`coze-preview-build.sh` → `coze-preview-run.sh`（启动前会清理 5000/8000 端口残留进程）
+- **部署**：uvicorn（port 5000）同时服务 API 和 SPA 静态文件（dist/）。脚本：`coze-deploy-build.sh` → `coze-deploy-run.sh`（`ENV=production`）
 - 预览/部署脚本中 `OM_ENABLED` 和 `BTP_ENABLED` 显式设为 `false`（历史遗留变量，当前代码不再读取）
 - JWT 密钥：生产模式必须提供 `MDM_SECRET_KEY`（`auth.py` 中未设置时 fail-fast 抛 RuntimeError）；deploy-run.sh 会优先生成并持久化到 `backend/.mdm_secret_key`（600 权限，已 gitignore）
 
@@ -175,16 +180,16 @@ python -m pytest tests/test_auth.py                                       # 单�
 | `MDM_SECRET_KEY` | — | **生产必填**，JWT 签名密钥，缺失时启动 fail-fast |
 | `ENV` | `development` | `development` / `production` / `test` |
 | `DEEPSEEK_API_KEY` | — | LLM 网关 DeepSeek 模式密钥（默认 mock 无需配置） |
-| `ALLOWED_ORIGINS` | `http://localhost` | 生产模式 CORS 允许源（逗号分隔；DEBUG 模式固定放行 localhost:3000/8000） |
+| `ALLOWED_ORIGINS` | `http://localhost` | 生产模式 CORS 允许源（逗号分隔；DEBUG 模式固定放行 localhost/127.0.0.1:3000/8000） |
 
-## 登录凭据
+## 登录凭据（MOCK_USERS 硬编码）
 
 | 角色 | 用户名 | 密码 |
 |------|--------|------|
-| 管理员 | `admin001` | `adminpass001` |
-| 普通用户 | `user001` / `user002` | `password001` / `password002` |
-| 部门审批 | `dept001` | `deptpass001` |
-| 数据管理员 | `data001` | `datapass001` |
+| 管理员（admin） | `admin001` | `adminpass001` |
+| 普通用户（applicant） | `user001` / `user002` | `password001` / `password002` |
+| 部门审批（dept_approver） | `dept001` | `deptpass001` |
+| 数据管理员（data_admin） | `data001` | `datapass001` |
 
 ## 代码风格与约定
 
@@ -210,7 +215,7 @@ python -m pytest tests/test_auth.py                                       # 单�
 - 预览端口固定 5000，禁止 9000
 - 数据库默认 SQLite（开发），生产 PostgreSQL
 - 预览环境使用系统 Python 而非 venv（沙箱中 uv venv 下载超时），生产环境应使用 venv
-- CORS 在 DEBUG 模式下允许 localhost:3000 和 localhost:8000
+- CORS 在 DEBUG 模式下允许 localhost:3000 和 localhost:8000（含 127.0.0.1）
 - 实体批量操作上限 **5,000**（`entity_accessor.MAX_ENTITIES` / `duplicate_detector.MAX_ENTITIES_PER_RUN` / `csv_importer.MAX_ROWS` 三处口径一致，SPEC §7 Phase 2「5000 上限生效」；超限拒绝并要求分批，不自动切批）
 - 5,000 上限口径已在五处对齐：`entity_accessor.MAX_ENTITIES` / `duplicate_detector.MAX_ENTITIES_PER_RUN` / `csv_importer.MAX_ROWS` / `crud.get_material_records(limit=)` / `crud.get_partner_records(limit=)`；`scripts/seed_demo_data.py` 的默认播种量也是 5,000，所以默认参数播种后可直接整表跑质量检测。要演示超限拒绝与分批扫描，必须显式传 `--records 10000`（或显式传更大的 `limit`），`test_seed_demo_data.py` 用 `MAX_ENTITIES` 断言默认量与上限绑定，两者漂移即失败
 
@@ -218,6 +223,7 @@ python -m pytest tests/test_auth.py                                       # 单�
 
 - `package-lock.json` 为 npm 残留，勿使用 npm
 - 后端 SPA fallback 仅在 `dist/` 存在时生效，开发模式下前端独立运行
+- `init_db.py` 会 drop_all 后重建所有表，仅用于初始化/重置，勿在生产数据上运行
 - **2026-07 安全修复**：生产部署曾用 `ENV=development` 导致免认证回退生效 + JWT 密钥硬编码可伪造，已修复（ENV=production、删除回退、MDM_SECRET_KEY 独立环境变量）
 - **2026-09 架构演进**：旧版 MDM 申请/审批/金标数据/发布链路已按 SPEC §1.4 移除（applications/classifications/golden_records 等模块与页面），OpenMetadata/BTP 集成代码已删除；`docs/knowledge-graph.md` 与 `graphify-out/` 图谱基于旧版代码，仅供参考
 - `auth.py` 用户库仍是 MOCK_USERS 硬编码，中期应迁入数据库

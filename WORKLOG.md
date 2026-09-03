@@ -1,5 +1,6 @@
 # WORKLOG — 存量数据治理实施记录
 
+> 项目规则：根目录 `AGENTS.md`（架构、命令、安全约束与长期约定），所有变更须遵守其中「安全约束」与「长期约束」。\r
 > 基线文档：`docs/spec-data-governance.md` v1.4（定稿实施基线，v1.4 起承认 AI 辅助治理层为正式范围）
 > 执行方式：主 agent 串行持有 `models.py` / `crud.py` / `schemas.py` / `init_db.py` / `main.py` / `src/App.tsx` / `src/components/Layout.tsx`；子 agent 在同目录、不重叠文件集上并行。
 > 每条目记录：做了什么 → 验证证据 → 遗留/决策。
@@ -7,6 +8,13 @@
 ---
 
 ## 2026-09-03
+
+### 参考资料归档提交与推送（bc1718c）
+
+两个问题：
+
+1. Project/kimi_files/app 是内嵌 git 仓库，直接提交会变成无效 gitlink。已从索引移除并加入 .gitignore（未动磁盘上的文件）；如需纳入版本管理，建议后续用 git submodule 正式接入。
+2. 首次 push 被 GitHub Push Protection 拦截：Project/kimi_files/OpenMetadata_制造业物料治理_技术实施指南.md:1159 里的 Slack webhook 占位符（T00000000/B00000000/XXXX...，非真实密钥）被误判。已替换为 <替换为你的 Slack Incoming Webhook URL> 并 amend 后推送成功。
 
 ### 标准定义人改名 + 仓库清理
 
