@@ -8,6 +8,11 @@
 
 ## 2026-09-03
 
+### 标准定义人改名 + 仓库清理
+
+- 种子标准定义人 `钱数据` → `张三`：改 `init_db.py`（29 条种子）与标准表单占位符 `DataStandardFormDialog.tsx`；现有演示库已同步 UPDATE（29 行），页面实测全表无 `钱数据` 残留。`auth.py` 的 data001 用户名与测试 fixture 不在本次口径内，未动。
+- `.gitignore` 增加 `.playwright-mcp/`；删除本次走查临时截图 `checks-page.png` / `report-page.png`。
+
 ### 三项待办清零：favicon 404 / dev server 重启复验 / 跨工厂争议造数
 
 **做了什么**

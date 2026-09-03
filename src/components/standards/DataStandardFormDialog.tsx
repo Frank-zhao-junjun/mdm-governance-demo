@@ -349,7 +349,7 @@ function DataStandardForm({
             value={values.owner}
             onChange={(e) => setField('owner', e.target.value)}
             maxLength={LIMITS.owner}
-            placeholder="如 钱数据"
+            placeholder="如 张三"
           />
           <FieldError message={errors.owner} />
         </div>

@@ -71,7 +71,7 @@ def _standard_rows():
             pattern=pattern,
             unique=unique,
             business_attrs={"standard_topic": TOPIC_MAP[entity], "standard_subcategory": subcategory},
-            owner="钱数据",
+            owner="张三",
             standard_source="sap",
             dept_scope=["采购部", "生产部", "财务部"],
             description=desc,
