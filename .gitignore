@@ -90,3 +90,6 @@ backend/.mdm_secret_key
 # CodeGraph tool artifacts
 .codegraph/
 .gstack/
+
+# Browser QA artifacts
+.playwright-mcp/
