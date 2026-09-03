@@ -8,6 +8,7 @@ import {
   AlertTriangle,
   Bot,
   Scale,
+  BookMarked,
   LogOut,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -24,6 +25,7 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { path: '/dashboard', label: '仪表盘', icon: LayoutDashboard },
   { path: '/quality/standards', label: '数据标准管理', icon: ListChecks },
+  { path: '/metadata', label: '元数据管理', icon: BookMarked },
   { path: '/governance', label: '治理驾驶舱', icon: LayoutDashboard },
   { path: '/copilot', label: 'Copilot 裁决', icon: Scale },
   { path: '/disputes', label: '权责冲突', icon: AlertTriangle },

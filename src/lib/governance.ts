@@ -109,6 +109,8 @@ export const LIMITS = {
 
 export interface StandardFormValues {
   entity_type: EntityType;
+  /** 关联的元数据字段 ID；'' 表示不关联（手填模式）。非空时后端以登记册为准带入 */
+  metadata_field_id: string;
   sap_table: string;
   field_name: string;
   field_label: string;
@@ -134,6 +136,7 @@ export type StandardFormErrors = Partial<Record<keyof StandardFormValues, string
 export function emptyForm(entityType: EntityType = 'material'): StandardFormValues {
   return {
     entity_type: entityType,
+    metadata_field_id: '',
     sap_table: '',
     field_name: '',
     field_label: '',
@@ -159,6 +162,7 @@ export function formFromStandard(standard: DataStandard): StandardFormValues {
   const attrs = standard.business_attrs || {};
   return {
     entity_type: standard.entity_type,
+    metadata_field_id: standard.metadata_field_id ?? '',
     sap_table: standard.sap_table ?? '',
     field_name: standard.field_name,
     field_label: standard.field_label,
@@ -306,12 +310,14 @@ export function toCreatePayload(values: StandardFormValues): DataStandardCreateP
     dept_scope: depts.length ? depts : null,
     description: trimmedOrNull(values.description),
     sap_field_desc: trimmedOrNull(values.sap_field_desc),
+    // 关联元数据字段：非空时后端以登记册为准带入身份键与类型属性；'' → null（不关联）
+    metadata_field_id: trimmedOrNull(values.metadata_field_id),
   };
 }
 
 /**
  * PUT 请求体：后端 DataStandardUpdate 不接受 entity_type / sap_table / field_name，
- * 这三个身份键在编辑对话框中只读展示。
+ * 这三个身份键在编辑对话框中只读展示；metadata_field_id 允许变更（改挂/解除关联）。
  */
 export function toUpdatePayload(values: StandardFormValues): DataStandardUpdatePayload {
   const created = toCreatePayload(values);
@@ -331,5 +337,6 @@ export function toUpdatePayload(values: StandardFormValues): DataStandardUpdateP
     dept_scope: created.dept_scope,
     description: created.description,
     sap_field_desc: created.sap_field_desc,
+    metadata_field_id: created.metadata_field_id,
   };
 }

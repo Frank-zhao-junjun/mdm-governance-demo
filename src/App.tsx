@@ -5,6 +5,7 @@ import Layout from './components/Layout';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import DataStandards from './pages/DataStandards';
+import Metadata from './pages/Metadata';
 import QualityChecks from './pages/QualityChecks';
 import QualityReport from './pages/QualityReport';
 import SuspectedErrors from './pages/SuspectedErrors';
@@ -24,6 +25,7 @@ const App: React.FC = () => {
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/quality" element={<Navigate to="/quality/standards" replace />} />
           <Route path="/quality/standards" element={<DataStandards />} />
+          <Route path="/metadata" element={<Metadata />} />
           <Route path="/quality/checks" element={<QualityChecks />} />
           <Route path="/quality/checks/report" element={<QualityReport />} />
           <Route path="/quality/suspected" element={<SuspectedErrors />} />

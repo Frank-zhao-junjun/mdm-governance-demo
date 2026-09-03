@@ -6,7 +6,7 @@
 
 制造业数据治理平台（Stock Data Governance，v2.0.0）— 存量数据治理与质量管理平台。服务边界明确为：仅提供数据治理与数据质量管理能力，不承接新增数据流程、审批流程、Golden Data（金标数据）管理和下游分发执行。
 
-本项目重点覆盖数据标准、质量检测、疑似错误识别、AI 辅助裁决（Copilot）、Agent 编排、审计追踪与问题闭环管理；归并执行只输出建议与执行预检，实际归并由外部执行器承担，平台不改写业务记录。
+本项目重点覆盖元数据管理（字段登记册/实体元数据/术语表）、数据标准、质量检测、疑似错误识别、AI 辅助裁决（Copilot）、Agent 编排、审计追踪与问题闭环管理；归并执行只输出建议与执行预检，实际归并由外部执行器承担，平台不改写业务记录。
 
 ## 技术栈
 
@@ -24,14 +24,14 @@
 ```
 ├── src/                        # 前端源码
 │   ├── main.tsx               # 前端入口
-│   ├── App.tsx                # 根组件 + 路由定义（10 页面：/login /dashboard
+│   ├── App.tsx                # 根组件 + 路由定义（11 页面：/login /dashboard
 │   │                          #   /quality/standards /quality/checks
 │   │                          #   /quality/checks/report /quality/suspected
-│   │                          #   /copilot /governance /agents /disputes）
+│   │                          #   /copilot /governance /agents /disputes /metadata）
 │   ├── pages/                 # 页面组件（Dashboard, Login, DataStandards,
 │   │                          #   QualityChecks, QualityReport, SuspectedErrors,
 │   │                          #   Copilot, GovernanceDashboard, AgentActivity,
-│   │                          #   DisputeView）
+│   │                          #   DisputeView, Metadata）
 │   ├── components/            # Layout.tsx + standards/（DataStandardFormDialog）+ ui/
 │   │   └── ui/                # shadcn/ui 组件
 │   ├── hooks/                 # 自定义 hooks（use-mobile）
@@ -40,23 +40,25 @@
 │   │   ├── governance.ts      # 数据标准领域 API + 表单模型
 │   │   ├── quality.ts         # 质量检测领域 API
 │   │   ├── suspected.ts       # 疑似错误领域 API
+│   │   ├── metadata.ts        # 元数据管理字典与表单校验（字段登记册/实体/术语）
 │   │   └── utils.ts           # shadcn/ui cn() 工具函数
 │   └── types/api.ts           # 类型定义
 ├── backend/                    # Python 后端
 │   ├── app/
-│   │   ├── main.py            # FastAPI 入口（注册 8 个 router，均为 /api/* 前缀；
+│   │   ├── main.py            # FastAPI 入口（注册 9 个 router，均为 /api/* 前缀；
 │   │   │                      #   /api/auth/login、/api/auth/me 认证端点直接定义在此；
 │   │   │                      #   CORS；SPA fallback）
 │   │   ├── models.py          # SQLAlchemy 数据模型（4 个枚举：StepName/RuleType/
-│   │   │                      #   TicketStatus/EscalationLevel + 14 张表：data_standards,
+│   │   │                      #   TicketStatus/EscalationLevel + 17 张表：data_standards,
 │   │   │                      #   material_records, partner_records, quality_check_rules,
 │   │   │                      #   quality_check_batches, quality_check_results,
 │   │   │                      #   suspected_errors, audit_logs, quality_ticket,
 │   │   │                      #   merge_ticket, key_mapping, agent_trace,
-│   │   │                      #   governance_owner, approval_evidence）
+│   │   │                      #   governance_owner, approval_evidence,
+│   │   │                      #   metadata_field, metadata_entity, glossary_term）
 │   │   ├── schemas.py         # Pydantic 请求/响应模型
 │   │   ├── crud.py            # 数据库 CRUD 操作
-│   │   ├── api/               # 8 个 API 路由模块
+│   │   ├── api/               # 9 个 API 路由模块
 │   │   │   ├── data_standards.py      # /api/data-standards 数据标准 CRUD（409 冲突 / 403 权限）
 │   │   │   ├── quality_checks.py      # /api/quality-checks POST run（require_admin 门禁）+ rules/results/batches/report 查询
 │   │   │   ├── suspected_errors.py    # /api/suspected-errors POST detect + GET 列表 + POST /{id}/resolve
@@ -64,6 +66,9 @@
 │   │   │   ├── copilot.py             # /api/copilot 待办、approve/reject/overturn、问责
 │   │   │   ├── governance.py          # /api/governance 报告、簇、归并预检（merge-execute 仅返回 ready）
 │   │   │   ├── owners.py              # /api/owners 治理 Owner CRUD
+│   │   │   ├── metadata.py            # /api/metadata 元数据管理 8 端点（entities 总览/更新、
+│   │   │   │                          #   fields 登记册 CRUD + 过滤分页、glossary 术语 CRUD；
+│   │   │   │                          #   读 require_any / 写 require_admin，写操作落审计）
 │   │   │   └── evidence.py            # /api/evidence 证据链
 │   │   ├── core/              # 核心配置
 │   │   │   ├── config.py      # 环境变量配置（ENV 默认 development，DEBUG=ENV==development）
@@ -71,7 +76,7 @@
 │   │   │   ├── auth.py        # JWT 认证（用户库为 MOCK_USERS 硬编码，4 种角色；
 │   │   │   │                      #   生产缺 MDM_SECRET_KEY 时在此 fail-fast 抛 RuntimeError）
 │   │   │   └── llm_gateway.py # LLM 网关（mock/DeepSeek，熔断降级，trace_id 透传）
-│   │   ├── services/          # 8 个业务服务
+│   │   ├── services/          # 9 个业务服务
 │   │   │   ├── quality_engine.py      # 检测规则执行引擎
 │   │   │   ├── rule_derivation.py     # 标准 → 规则派生（required→null / pattern→format 等）
 │   │   │   ├── quality_runner.py      # 限额 → 装配 → 执行 → 单事务落库（上限 5,000 实体）
@@ -80,6 +85,7 @@
 │   │   │   ├── duplicate_detector.py  # 重复识别
 │   │   │   ├── entity_accessor.py     # 实体数据访问
 │   │   │   ├── csv_importer.py        # CSV 导入
+│   │   │   ├── metadata_service.py    # 元数据实体总览装配（补 must_govern/总字段计数）
 │   │   │   └── audit_service.py       # 审计日志
 │   │   ├── skills/            # 确定性 Skill 层（无副作用，只输出建议）
 │   │   │   ├── common.py              # EvidenceItem / SkillSuggestion / SkillResult 契约
@@ -102,7 +108,7 @@
 │   ├── requirements.txt       # Python 依赖（含 pytest、httpx）
 │   ├── pytest.ini             # pytest 配置（testpaths=tests；app.* 的 DeprecationWarning 视为 error）
 │   ├── .env.example           # 环境变量示例
-│   └── tests/                 # 后端 pytest 测试（19 个测试文件 + conftest.py，共 310 个用例）
+│   └── tests/                 # 后端 pytest 测试（20 个测试文件 + conftest.py，共 357 个用例）
 ├── scripts/                    # Coze 平台脚本
 │   ├── coze-preview-build.sh  # 预览构建（pnpm install + uv pip + init_db）
 │   ├── coze-preview-run.sh    # 预览运行（后端:8000 后台 + Vite:5000 前台；启动前清理 5000/8000 端口残留进程）
@@ -126,7 +132,7 @@
 
 - **前端入口**：`src/main.tsx` → `src/App.tsx`（路由定义）
 - **前端 API 客户端**：`src/lib/api.ts` — 封装 fetch + JWT；领域封装在 `governance.ts` / `quality.ts` / `suspected.ts`
-- **后端入口**：`backend/app/main.py` — FastAPI app，注册 8 个 router，含 SPA fallback（`dist/` 存在时非 API 路由返回 `dist/index.html`）
+- **后端入口**：`backend/app/main.py` — FastAPI app，注册 9 个 router，含 SPA fallback（`dist/` 存在时非 API 路由返回 `dist/index.html`）
 - **后端配置**：`backend/app/core/config.py` — 环境变量驱动，`ENV` 默认 `development`
 - **数据库初始化**：`backend/init_db.py` — 建表 + 种子数据（注意：会先 drop_all 重建，勿对含数据的库执行）
 - **演示数据**：`backend/scripts/seed_demo_data.py` — 固定种子，默认幂等，`--reset` 只删演示对象
@@ -154,7 +160,7 @@ python -m uvicorn app.main:app --reload --port 8000   # API 文档: http://local
 ### 测试
 ```bash
 cd backend
-ENV=test SQLALCHEMY_DATABASE_URL="sqlite:///:memory:" python -m pytest   # 全部测试（310 个用例，约 11s）
+ENV=test SQLALCHEMY_DATABASE_URL="sqlite:///:memory:" python -m pytest   # 全部测试（357 个用例，约 57s）
 python -m pytest tests/test_auth.py                                       # 单文件
 # pytest.ini 将 app.* 的 DeprecationWarning 视为 error；
 # 第三方告警（passlib/pkg_resources/pydantic UserWarning）已显式忽略

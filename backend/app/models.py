@@ -31,6 +31,11 @@ class StepName(str, PyEnum):
     ERROR_DETECT = "error_detect"
     ERROR_RESOLVE = "error_resolve"
     DATA_IMPORT = "data_import"
+    METADATA_ENTITY_UPDATE = "metadata_entity_update"
+    METADATA_FIELD_CREATE = "metadata_field_create"
+    METADATA_FIELD_UPDATE = "metadata_field_update"
+    GLOSSARY_CREATE = "glossary_create"
+    GLOSSARY_UPDATE = "glossary_update"
 
 
 class RuleType(str, PyEnum):
@@ -97,6 +102,7 @@ class DataStandard(Base):
     # 元数据
     description = Column(Text, nullable=True)
     sap_field_desc = Column(Text, nullable=True)
+    metadata_field_id = Column(String(36), ForeignKey("metadata_field.id"), nullable=True)  # 关联元数据字段
     created_at = Column(DateTime, default=_now_utc)
     updated_at = Column(DateTime, default=_now_utc, onupdate=_now_utc)
 
@@ -364,3 +370,56 @@ class ApprovalEvidence(Base):
     opinion = Column(Text, nullable=True)
     snapshot_json = Column(JSON, nullable=True)
     created_at = Column(DateTime, default=_now_utc)
+
+
+class MetadataField(Base):
+    """元数据字段定义（实体下 SAP 表字段的业务语义与治理属性）。"""
+    __tablename__ = "metadata_field"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    entity_type = Column(String(50), nullable=False)  # material / supplier / customer
+    sap_table = Column(String(50), nullable=True)     # MARA / BUT000 / LFA1 / KNA1
+    field_name = Column(String(100), nullable=False)  # MATNR / MAKTX / NAME1 等
+    field_label = Column(String(200), nullable=False)  # 字段中文标签
+    data_type = Column(String(50), nullable=False)    # string / number / date / enum / boolean / amount / text
+    max_length = Column(Integer, nullable=True)
+    view_section = Column(String(100), nullable=True)  # 视图分区（如 基本数据 / 采购视图）
+    business_definition = Column(Text, nullable=True)
+    standard_source = Column(String(20), nullable=True)  # sap / ariba_slp / internal
+    must_govern = Column(Boolean, default=False)         # 是否必须治理
+    glossary_term_id = Column(String(36), ForeignKey("glossary_term.id"), nullable=True)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=_now_utc)
+    updated_at = Column(DateTime, default=_now_utc, onupdate=_now_utc)
+
+    __table_args__ = (
+        UniqueConstraint("entity_type", "sap_table", "field_name", name="uq_metadata_entity_table_field"),
+    )
+
+
+class MetadataEntity(Base):
+    """元数据实体定义（物料/供应商/客户等主数据实体级治理属性）。"""
+    __tablename__ = "metadata_entity"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    entity_type = Column(String(50), nullable=False, unique=True, index=True)
+    display_name = Column(String(200), nullable=False)
+    business_definition = Column(Text, nullable=True)
+    data_owner = Column(String(50), nullable=True)
+    dept = Column(String(100), nullable=True)
+    tags = Column(JSON, nullable=True)
+    sensitivity_level = Column(String(20), nullable=True)  # public / internal / confidential
+    created_at = Column(DateTime, default=_now_utc)
+    updated_at = Column(DateTime, default=_now_utc, onupdate=_now_utc)
+
+
+class GlossaryTerm(Base):
+    """业务术语表（元数据字段可引用的统一定义词条）。"""
+    __tablename__ = "glossary_term"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    term = Column(String(200), nullable=False, unique=True)
+    definition = Column(Text, nullable=False)
+    aliases = Column(JSON, nullable=True)
+    created_at = Column(DateTime, default=_now_utc)
+    updated_at = Column(DateTime, default=_now_utc, onupdate=_now_utc)

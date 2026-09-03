@@ -55,11 +55,14 @@ export interface DataStandardCreatePayload {
   dept_scope?: string[] | null;
   description?: string | null;
   sap_field_desc?: string | null;
+  /** 关联的元数据字段 ID（可空；非空时后端以登记册为准带入身份键与类型属性） */
+  metadata_field_id?: string | null;
 }
 
 /**
  * PUT /api/data-standards/{id} 请求体（= schemas.DataStandardUpdate）。
- * 注意：entity_type / sap_table / field_name 为身份键，后端不接受更新。
+ * 注意：entity_type / sap_table / field_name 为身份键，后端不接受更新；
+ * metadata_field_id 允许变更（改挂/解除关联），非空时后端仍以登记册为准带入。
  */
 export interface DataStandardUpdatePayload {
   field_label?: string | null;
@@ -77,6 +80,8 @@ export interface DataStandardUpdatePayload {
   dept_scope?: string[] | null;
   description?: string | null;
   sap_field_desc?: string | null;
+  /** 关联的元数据字段 ID（可空；置 null 表示解除关联） */
+  metadata_field_id?: string | null;
 }
 
 /** GET /api/data-standards 响应项（= schemas.DataStandardResponse） */
@@ -88,6 +93,12 @@ export interface DataStandard extends DataStandardCreatePayload {
   data_type: StandardDataType;
   required: boolean;
   unique: boolean;
+  /** 关联的元数据字段 ID（可空） */
+  metadata_field_id?: string | null;
+  /** 关联元数据字段标签（api 层装配带出，可空） */
+  metadata_field_label?: string | null;
+  /** 关联元数据字段视图分区（api 层装配带出，可空） */
+  metadata_view_section?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -366,4 +377,137 @@ export interface SuspectedErrorListResponse {
 export interface SuspectedResolvePayload {
   status: SuspectedResolveStatus;
   resolution_note?: string | null;
+}
+
+// ========== 元数据管理 ==========
+
+/** 与 schemas.MetadataFieldBase.standard_source 的 pattern 一致 */
+export type MetadataSource = 'sap' | 'ariba_slp' | 'internal';
+
+/** 与 schemas.MetadataEntityBase.sensitivity_level 的 pattern 一致 */
+export type SensitivityLevel = 'public' | 'internal' | 'confidential';
+
+/** GET /api/metadata/fields 响应项（= schemas.MetadataFieldResponse） */
+export interface MetadataField {
+  id: string;
+  entity_type: EntityType;
+  sap_table: string | null;
+  field_name: string;
+  field_label: string;
+  data_type: StandardDataType;
+  max_length: number | null;
+  view_section: string | null;
+  business_definition: string | null;
+  /** schemas 中为 Optional（列可空），响应可能为 null */
+  standard_source: MetadataSource | null;
+  must_govern: boolean;
+  glossary_term_id: string | null;
+  /** 关联业务术语名（GET 列表端点装配带出，可空） */
+  glossary_term_name: string | null;
+  /** 引用该字段的数据标准数（GET 列表端点装配带出） */
+  standard_count: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+/** GET /api/metadata/fields 响应（= schemas.MetadataFieldListResponse） */
+export interface MetadataFieldListResponse {
+  total: number;
+  items: MetadataField[];
+}
+
+/** GET /api/metadata/fields 查询参数（与后端 list_metadata_fields 同名映射） */
+export interface MetadataFieldQuery {
+  entity_type?: EntityType;
+  view_section?: string;
+  must_govern?: boolean;
+  keyword?: string;
+  skip?: number;
+  limit?: number;
+}
+
+/** POST /api/metadata/fields 请求体（= schemas.MetadataFieldCreate） */
+export interface MetadataFieldCreatePayload {
+  entity_type: EntityType;
+  sap_table?: string | null;
+  field_name: string;
+  field_label: string;
+  data_type: StandardDataType;
+  max_length?: number | null;
+  view_section?: string | null;
+  business_definition?: string | null;
+  standard_source?: MetadataSource | null;
+  must_govern?: boolean;
+  glossary_term_id?: string | null;
+  is_active?: boolean;
+}
+
+/**
+ * PUT /api/metadata/fields/{id} 请求体（= schemas.MetadataFieldUpdate）。
+ * 全可选；entity_type / sap_table / field_name 为身份键，后端不接受更新。
+ */
+export interface MetadataFieldUpdatePayload {
+  field_label?: string | null;
+  data_type?: StandardDataType | null;
+  max_length?: number | null;
+  view_section?: string | null;
+  business_definition?: string | null;
+  standard_source?: MetadataSource | null;
+  must_govern?: boolean | null;
+  glossary_term_id?: string | null;
+  is_active?: boolean | null;
+}
+
+/** GET /api/metadata/entities 响应项（= schemas.MetadataEntityResponse，计数字段由 service 装配） */
+export interface MetadataEntity {
+  id: string;
+  entity_type: EntityType;
+  display_name: string;
+  business_definition: string | null;
+  data_owner: string | null;
+  dept: string | null;
+  tags: string[] | null;
+  sensitivity_level: SensitivityLevel | null;
+  /** 该实体下 must_govern=True 的元数据字段数 */
+  governed_field_count: number;
+  /** 该实体下元数据字段总数 */
+  total_field_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+/** PUT /api/metadata/entities/{entity_type} 请求体（= schemas.MetadataEntityUpdate，全可选） */
+export interface MetadataEntityUpdatePayload {
+  display_name?: string | null;
+  business_definition?: string | null;
+  data_owner?: string | null;
+  dept?: string | null;
+  tags?: string[] | null;
+  sensitivity_level?: SensitivityLevel | null;
+}
+
+/** GET /api/metadata/glossary 响应项（= schemas.GlossaryTermResponse；该端点直接返回数组） */
+export interface GlossaryTerm {
+  id: string;
+  term: string;
+  definition: string;
+  aliases: string[] | null;
+  /** 关联的元数据字段数（列表与写响应均装配真实计数） */
+  field_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+/** POST /api/metadata/glossary 请求体（= schemas.GlossaryTermCreate） */
+export interface GlossaryTermCreatePayload {
+  term: string;
+  definition: string;
+  aliases?: string[] | null;
+}
+
+/** PUT /api/metadata/glossary/{id} 请求体（= schemas.GlossaryTermUpdate；term 名称不可变） */
+export interface GlossaryTermUpdatePayload {
+  definition?: string | null;
+  aliases?: string[] | null;
 }

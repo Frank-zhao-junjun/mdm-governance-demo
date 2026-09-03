@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
@@ -37,10 +37,20 @@ import {
   type StandardFormErrors,
   type StandardFormValues,
 } from '@/lib/governance';
-import type { DataStandard, EntityType, StandardDataType, StandardSource } from '@/types/api';
+import type {
+  DataStandard,
+  EntityType,
+  MetadataField,
+  MetadataFieldListResponse,
+  StandardDataType,
+  StandardSource,
+} from '@/types/api';
 
 /** Radix Select 不允许 value=""，用哨兵表示「未指定」 */
 const SOURCE_NONE = '__none__';
+
+/** Radix Select 不允许 value=""，用哨兵表示「不关联元数据字段（手填模式）」 */
+const FIELD_NONE = '__none__';
 
 /** SAP 表输入框的候选提示（datalist id，页面内唯一） */
 const SAP_TABLE_DATALIST_ID = 'sap-table-suggestions';
@@ -108,6 +118,76 @@ function DataStandardForm({
     setErrors((prev) => (prev[key] ? { ...prev, [key]: undefined } : prev));
   };
 
+  // ========== 元数据字段关联（Task 7：字段登记册下拉） ==========
+
+  /** 当前实体类型下的元数据字段选项（GET /api/metadata/fields?limit=200） */
+  const [fieldOptions, setFieldOptions] = useState<MetadataField[]>([]);
+  // 初始 true：挂载即拉取；切换实体类型时在事件处理器里重新置位（避免 effect 内同步 setState）
+  const [fieldOptionsLoading, setFieldOptionsLoading] = useState(true);
+  /** 关联模式：已选元数据字段时，身份键与类型属性由登记册带入，只读展示 */
+  const linked = !!values.metadata_field_id;
+
+  // 跟随表单实体类型拉取字段选项（编辑态实体类型固定，仅拉一次）
+  useEffect(() => {
+    let cancelled = false;
+    api<MetadataFieldListResponse>(
+      `/api/metadata/fields?entity_type=${values.entity_type}&limit=200`,
+      { silentError: true },
+    )
+      .then((res) => {
+        if (!cancelled) setFieldOptions(res.items);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setFieldOptions([]);
+        toast.error(err instanceof Error ? err.message : '元数据字段加载失败');
+      })
+      .finally(() => {
+        if (!cancelled) setFieldOptionsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [values.entity_type]);
+
+  /** 切换实体类型：清空已选关联并解除只读，选项由上面的 effect 重新拉取 */
+  const handleEntityTypeChange = (next: EntityType) => {
+    setFieldOptionsLoading(true);
+    setValues((prev) => ({ ...prev, entity_type: next, metadata_field_id: '' }));
+    setErrors((prev) => (prev.entity_type ? { ...prev, entity_type: undefined } : prev));
+  };
+
+  /** 选中/清除元数据字段关联 */
+  const handleMetadataFieldChange = (next: string) => {
+    if (next === FIELD_NONE) {
+      // 「不关联」：清空关联并解除只读，已带入的值保留，供用户继续手填
+      setValues((prev) => ({ ...prev, metadata_field_id: '' }));
+      return;
+    }
+    const field = fieldOptions.find((item) => item.id === next);
+    if (!field) return;
+    // 登记册为准带入：身份键（SAP 表/字段名）+ 标签 + 类型属性
+    setValues((prev) => ({
+      ...prev,
+      metadata_field_id: field.id,
+      sap_table: field.sap_table ?? '',
+      field_name: field.field_name,
+      field_label: field.field_label,
+      data_type: field.data_type,
+      max_length: field.max_length == null ? '' : String(field.max_length),
+    }));
+    // 带入的值本身合法，清掉这些键上可能残留的旧校验错误，避免「关联后仍报错」死锁
+    setErrors((prev) => {
+      const nextErrors = { ...prev };
+      delete nextErrors.sap_table;
+      delete nextErrors.field_name;
+      delete nextErrors.field_label;
+      delete nextErrors.data_type;
+      delete nextErrors.max_length;
+      return nextErrors;
+    });
+  };
+
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (submitting) return;
@@ -165,7 +245,7 @@ function DataStandardForm({
           <Label htmlFor="std_entity_type">实体类型 *</Label>
           <Select
             value={values.entity_type}
-            onValueChange={(next) => setField('entity_type', next as EntityType)}
+            onValueChange={(next) => handleEntityTypeChange(next as EntityType)}
             disabled={isEdit}
           >
             <SelectTrigger id="std_entity_type" className="w-full">
@@ -182,6 +262,36 @@ function DataStandardForm({
           <FieldError message={errors.entity_type} />
         </div>
 
+        <div className="sm:col-span-2">
+          <Label htmlFor="std_metadata_field">元数据字段</Label>
+          {/* 编辑态若关联字段不在当前实体选项中（跨实体历史数据），触发器会显示空白，
+              属可接受降级：选项以当前实体为准，已保存的关联值不丢失 */}
+          <Select
+            value={values.metadata_field_id || FIELD_NONE}
+            onValueChange={handleMetadataFieldChange}
+            disabled={fieldOptionsLoading}
+          >
+            <SelectTrigger id="std_metadata_field" className="w-full">
+              <SelectValue placeholder="选择元数据字段（可不关联，手填）" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={FIELD_NONE}>不关联（手填模式）</SelectItem>
+              {fieldOptions.map((field) => (
+                <SelectItem key={field.id} value={field.id}>
+                  {field.sap_table ?? '-'}·{field.field_name} — {field.field_label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <p className="mt-1 text-xs text-gray-400">
+            {fieldOptionsLoading
+              ? '正在加载字段登记册…'
+              : linked
+                ? '已关联登记册字段，SAP 表/字段名/标签/类型/长度只读；选「不关联」可恢复手填。'
+                : '关联登记册字段后自动带入 SAP 表、字段名、标签与类型属性。'}
+          </p>
+        </div>
+
         <div>
           <Label htmlFor="std_sap_table">SAP 表</Label>
           <Input
@@ -190,7 +300,7 @@ function DataStandardForm({
             value={values.sap_table}
             onChange={(e) => setField('sap_table', e.target.value)}
             maxLength={LIMITS.sapTable}
-            disabled={isEdit}
+            disabled={isEdit || linked}
             placeholder="如 MARA / BUT000 / KNA1（可留空）"
             className="disabled:bg-gray-100 disabled:text-gray-500"
           />
@@ -209,7 +319,7 @@ function DataStandardForm({
             value={values.field_name}
             onChange={(e) => setField('field_name', e.target.value)}
             maxLength={LIMITS.fieldName}
-            disabled={isEdit}
+            disabled={isEdit || linked}
             placeholder="如 MATNR / NAME1"
             className="font-mono disabled:bg-gray-100 disabled:text-gray-500"
           />
@@ -223,6 +333,7 @@ function DataStandardForm({
             value={values.field_label}
             onChange={(e) => setField('field_label', e.target.value)}
             maxLength={LIMITS.fieldLabel}
+            disabled={linked}
             placeholder="如 物料编码"
           />
           <FieldError message={errors.field_label} />
@@ -235,6 +346,7 @@ function DataStandardForm({
           <Select
             value={values.data_type}
             onValueChange={(next) => setField('data_type', next as StandardDataType)}
+            disabled={linked}
           >
             <SelectTrigger id="std_data_type" className="w-full">
               <SelectValue placeholder="选择数据类型" />
@@ -259,7 +371,9 @@ function DataStandardForm({
             max={LIMITS.maxLengthMax}
             value={values.max_length}
             onChange={(e) => setField('max_length', e.target.value)}
+            disabled={linked}
             placeholder={`${LIMITS.maxLengthMin} ~ ${LIMITS.maxLengthMax}`}
+            className="disabled:bg-gray-100 disabled:text-gray-500"
           />
           <FieldError message={errors.max_length} />
         </div>

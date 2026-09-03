@@ -17,6 +17,11 @@ class AuditService:
         "error_detect": "执行疑似错误检测",
         "error_resolve": "处理疑似错误",
         "data_import": "导入存量数据",
+        "metadata_entity_update": "更新元数据实体",
+        "metadata_field_create": "创建元数据字段",
+        "metadata_field_update": "更新元数据字段",
+        "glossary_create": "创建业务术语",
+        "glossary_update": "更新业务术语",
     }
 
     STATUS_LABELS = {

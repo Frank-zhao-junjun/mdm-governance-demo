@@ -1,6 +1,7 @@
 """CRUD operations for the stock-data governance service."""
 from typing import Dict, List, Optional, Tuple
 
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
 from app import models
@@ -338,3 +339,170 @@ def get_audit_logs(db: Session, skip: int = 0, limit: int = 100) -> List[models.
         .limit(limit)
         .all()
     )
+
+
+# ========== Metadata ==========
+
+def get_metadata_fields(
+    db: Session,
+    entity_type: Optional[str] = None,
+    view_section: Optional[str] = None,
+    must_govern: Optional[bool] = None,
+    keyword: Optional[str] = None,
+    skip: int = 0,
+    limit: int = 50,
+) -> Tuple[List[models.MetadataField], int]:
+    query = db.query(models.MetadataField)
+    if entity_type:
+        query = query.filter(models.MetadataField.entity_type == entity_type)
+    if view_section:
+        query = query.filter(models.MetadataField.view_section == view_section)
+    if must_govern is not None:
+        query = query.filter(models.MetadataField.must_govern.is_(must_govern))
+    if keyword:
+        like = f"%{keyword}%"
+        query = query.filter(or_(
+            models.MetadataField.field_name.ilike(like),
+            models.MetadataField.field_label.ilike(like),
+        ))
+    total = query.count()
+    items = (
+        query.order_by(
+            models.MetadataField.entity_type,
+            models.MetadataField.sap_table,
+            models.MetadataField.field_name,
+        )
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
+    return items, total
+
+
+def get_metadata_field(db: Session, field_id: str) -> Optional[models.MetadataField]:
+    return db.query(models.MetadataField).filter(models.MetadataField.id == field_id).first()
+
+
+def get_metadata_fields_by_ids(db: Session, field_ids: List[str]) -> List[models.MetadataField]:
+    """按 id 集合批量取元数据字段（数据标准响应装配用，一次查询避免 N+1）。"""
+    if not field_ids:
+        return []
+    return (
+        db.query(models.MetadataField)
+        .filter(models.MetadataField.id.in_(field_ids))
+        .all()
+    )
+
+
+def find_metadata_field_conflict(db: Session, entity_type: str, sap_table: Optional[str], field_name: str) -> Optional[models.MetadataField]:
+    query = db.query(models.MetadataField).filter(
+        models.MetadataField.entity_type == entity_type,
+        models.MetadataField.field_name == field_name,
+    )
+    if sap_table:
+        query = query.filter(models.MetadataField.sap_table == sap_table)
+    else:
+        query = query.filter(models.MetadataField.sap_table.is_(None))
+    return query.first()
+
+
+def create_metadata_field(db: Session, data: dict) -> models.MetadataField:
+    item = models.MetadataField(**data)
+    db.add(item)
+    db.commit()
+    db.refresh(item)
+    return item
+
+
+def update_metadata_field(db: Session, field: models.MetadataField, data: dict) -> models.MetadataField:
+    for key, value in data.items():
+        setattr(field, key, value)
+    db.commit()
+    db.refresh(field)
+    return field
+
+
+def get_metadata_entities(db: Session) -> List[models.MetadataEntity]:
+    return (
+        db.query(models.MetadataEntity)
+        .order_by(models.MetadataEntity.entity_type)
+        .all()
+    )
+
+
+def get_metadata_entity(db: Session, entity_type: str) -> Optional[models.MetadataEntity]:
+    return (
+        db.query(models.MetadataEntity)
+        .filter(models.MetadataEntity.entity_type == entity_type)
+        .first()
+    )
+
+
+def update_metadata_entity(db: Session, entity: models.MetadataEntity, data: dict) -> models.MetadataEntity:
+    for key, value in data.items():
+        setattr(entity, key, value)
+    db.commit()
+    db.refresh(entity)
+    return entity
+
+
+def get_glossary_terms(db: Session) -> List[models.GlossaryTerm]:
+    return (
+        db.query(models.GlossaryTerm)
+        .order_by(models.GlossaryTerm.term)
+        .all()
+    )
+
+
+def create_glossary_term(db: Session, data: dict) -> models.GlossaryTerm:
+    item = models.GlossaryTerm(**data)
+    db.add(item)
+    db.commit()
+    db.refresh(item)
+    return item
+
+
+def update_glossary_term(db: Session, term: models.GlossaryTerm, data: dict) -> models.GlossaryTerm:
+    for key, value in data.items():
+        setattr(term, key, value)
+    db.commit()
+    db.refresh(term)
+    return term
+
+
+def count_standards_by_field_ids(db: Session, field_ids: List[str]) -> Dict[str, int]:
+    """按元数据字段 id 批量统计引用它的数据标准数（一次 GROUP BY，避免列表端点 N+1）。"""
+    if not field_ids:
+        return {}
+    rows = (
+        db.query(models.DataStandard.metadata_field_id, func.count())
+        .filter(models.DataStandard.metadata_field_id.in_(field_ids))
+        .group_by(models.DataStandard.metadata_field_id)
+        .all()
+    )
+    return {row[0]: row[1] for row in rows}
+
+
+def get_glossary_terms_by_ids(db: Session, term_ids: List[str]) -> Dict[str, models.GlossaryTerm]:
+    """按 id 集合批量取业务术语并建 id → 术语映射（字段登记册装配用，一次 IN 查询）。"""
+    if not term_ids:
+        return {}
+    rows = (
+        db.query(models.GlossaryTerm)
+        .filter(models.GlossaryTerm.id.in_(term_ids))
+        .all()
+    )
+    return {row.id: row for row in rows}
+
+
+def count_fields_by_glossary_term_ids(db: Session, term_ids: List[str]) -> Dict[str, int]:
+    """按术语 id 批量统计关联的元数据字段数（glossary 列表与写响应共用口径，一次 GROUP BY）。"""
+    if not term_ids:
+        return {}
+    rows = (
+        db.query(models.MetadataField.glossary_term_id, func.count())
+        .filter(models.MetadataField.glossary_term_id.in_(term_ids))
+        .group_by(models.MetadataField.glossary_term_id)
+        .all()
+    )
+    return {row[0]: row[1] for row in rows}

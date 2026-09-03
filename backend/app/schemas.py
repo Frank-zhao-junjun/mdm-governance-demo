@@ -2,7 +2,7 @@
 from datetime import datetime
 from typing import Any, Dict, List, Literal, Optional
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 # ========== Data Standards (SPEC §3.1) ==========
@@ -29,7 +29,16 @@ class DataStandardBase(BaseModel):
 
 
 class DataStandardCreate(DataStandardBase):
-    pass
+    metadata_field_id: Optional[str] = None  # 关联元数据字段；传入时核心字段以登记册为准带入
+    # 传 metadata_field_id 时 field_label 可省略（回填登记册标签）；否则保持必填
+    field_label: Optional[str] = Field(None, min_length=1, max_length=200)
+
+    @model_validator(mode="after")
+    def _require_label_without_registry_link(self):
+        """未关联元数据字段时 field_label 必填（保持旧行为不变）。"""
+        if not self.metadata_field_id and not self.field_label:
+            raise ValueError("未关联元数据字段时 field_label 必填")
+        return self
 
 
 class DataStandardUpdate(BaseModel):
@@ -48,10 +57,14 @@ class DataStandardUpdate(BaseModel):
     dept_scope: Optional[List[str]] = None
     description: Optional[str] = None
     sap_field_desc: Optional[str] = None
+    metadata_field_id: Optional[str] = None  # 传入时按登记册带入核心字段；显式 null 解除关联
 
 
 class DataStandardResponse(DataStandardBase):
     id: str
+    metadata_field_id: Optional[str] = None
+    metadata_field_label: Optional[str] = None    # 关联元数据字段标签（api 层装配带出，可空）
+    metadata_view_section: Optional[str] = None   # 关联元数据字段视图分区（api 层装配带出，可空）
     created_at: datetime
     updated_at: datetime
 
@@ -270,3 +283,109 @@ class GovernanceOwnerUpdate(BaseModel):
     domain: Optional[str] = Field(None, min_length=1, max_length=50)
     email: Optional[str] = Field(None, min_length=3, max_length=254)
     is_active: Optional[bool] = None
+
+
+# ========== Metadata (元数据管理) ==========
+
+_METADATA_SOURCE_PATTERN = "^(sap|ariba_slp|internal)$"
+_DATA_TYPE_PATTERN = "^(string|number|date|enum|boolean|amount|text)$"
+_SENSITIVITY_PATTERN = "^(public|internal|confidential)$"
+
+
+class MetadataFieldBase(BaseModel):
+    entity_type: str = Field(..., pattern=_ENTITY_PATTERN)
+    sap_table: Optional[str] = Field(None, max_length=50)
+    field_name: str = Field(..., min_length=1, max_length=100)
+    field_label: str = Field(..., min_length=1, max_length=200)
+    data_type: str = Field(..., pattern=_DATA_TYPE_PATTERN)
+    max_length: Optional[int] = Field(None, ge=1, le=10000)
+    view_section: Optional[str] = Field(None, max_length=100)
+    business_definition: Optional[str] = None
+    standard_source: Optional[str] = Field(None, pattern=_METADATA_SOURCE_PATTERN)
+    must_govern: bool = False
+    glossary_term_id: Optional[str] = None
+    is_active: bool = True
+
+
+class MetadataFieldCreate(MetadataFieldBase):
+    pass
+
+
+class MetadataFieldUpdate(BaseModel):
+    field_label: Optional[str] = Field(None, min_length=1, max_length=200)
+    data_type: Optional[str] = Field(None, pattern=_DATA_TYPE_PATTERN)
+    max_length: Optional[int] = Field(None, ge=1, le=10000)
+    view_section: Optional[str] = Field(None, max_length=100)
+    business_definition: Optional[str] = None
+    standard_source: Optional[str] = Field(None, pattern=_METADATA_SOURCE_PATTERN)
+    must_govern: Optional[bool] = None
+    glossary_term_id: Optional[str] = None
+    is_active: Optional[bool] = None
+
+
+class MetadataFieldResponse(MetadataFieldBase):
+    id: str
+    glossary_term_name: Optional[str] = None  # 关联业务术语名（GET 列表端点批量装配带出，可空）
+    standard_count: int = 0                   # 引用该字段的数据标准数（GET 列表端点批量装配带出）
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class MetadataFieldListResponse(BaseModel):
+    total: int
+    items: List[MetadataFieldResponse]
+
+
+class MetadataEntityBase(BaseModel):
+    entity_type: str = Field(..., pattern=_ENTITY_PATTERN)
+    display_name: str = Field(..., min_length=1, max_length=200)
+    business_definition: Optional[str] = None
+    data_owner: Optional[str] = Field(None, max_length=50)
+    dept: Optional[str] = Field(None, max_length=100)
+    tags: Optional[List[str]] = None
+    sensitivity_level: Optional[str] = Field(None, pattern=_SENSITIVITY_PATTERN)
+
+
+class MetadataEntityUpdate(BaseModel):
+    display_name: Optional[str] = Field(None, min_length=1, max_length=200)
+    business_definition: Optional[str] = None
+    data_owner: Optional[str] = Field(None, max_length=50)
+    dept: Optional[str] = Field(None, max_length=100)
+    tags: Optional[List[str]] = None
+    sensitivity_level: Optional[str] = Field(None, pattern=_SENSITIVITY_PATTERN)
+
+
+class MetadataEntityResponse(MetadataEntityBase):
+    id: str
+    governed_field_count: int  # 该实体下 must_govern=True 的元数据字段数（service 装配）
+    total_field_count: int     # 该实体下元数据字段总数（service 装配）
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class GlossaryTermBase(BaseModel):
+    term: str = Field(..., min_length=1, max_length=200)
+    definition: str = Field(..., min_length=1)
+    aliases: Optional[List[str]] = None
+
+
+class GlossaryTermCreate(GlossaryTermBase):
+    pass
+
+
+class GlossaryTermUpdate(BaseModel):
+    definition: Optional[str] = Field(None, min_length=1)
+    aliases: Optional[List[str]] = None
+
+
+class GlossaryTermResponse(GlossaryTermBase):
+    id: str
+    field_count: int = 0  # 关联的元数据字段数（列表与写响应均装配真实计数）
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)

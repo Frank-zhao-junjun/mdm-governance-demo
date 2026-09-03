@@ -1,7 +1,7 @@
 # 主数据字段治理 SPEC（规格说明）
 
-> **版本**：v1.4
-> **日期**：2026-09-02
+> **版本**：v1.5
+> **日期**：2026-09-03
 > **状态**：已定稿，作为实施基线
 
 ---
@@ -58,6 +58,10 @@ v1.4 起，系统在存量治理四件事之上增加 AI 辅助治理层（`app/
 3. **归并仅返回 ready**：`POST /api/governance/merge-execute` 只在做完批准校验与执行预检后返回 `ready`，实际归并由外部执行器完成，本系统不修改 `material_records` / `partner_records`。
 4. **"审批"指治理裁决，不是业务审批**：Copilot 的 approve / reject / overturn 是对**治理工单**（质量问题、归并建议）的处置意见，属治理闭环动作；§1.3 与 §1.4 所排除的"申请/审批/金标/分发"指**业务流程**（新增数据申请、业务审批流、金标数据创建发布、下游分发），两者不构成同一职能。高风险归并批准必须填写 opinion 且 confirmed=true，并留存 `approval_evidence` 快照。
 5. **LLM 可降级**：LLM 网关默认 mock 模式，DeepSeek 模式失败自动熔断降级为确定性结果，治理能力不依赖外部 LLM 可用性。
+
+### 1.4.2 元数据管理能力（v1.5 新增）
+
+v1.5 起，系统范围扩展出**元数据管理**能力：为物料、供应商、客户三类实体建立实体级元数据（业务定义、数据 Owner、管理部门、敏感级别）、字段登记册（metadata_field，作为数据标准引用字段的单一权威源）与业务术语表（glossary_term）。该能力只描述与登记"治理对象本身"的元数据，不承接数据建模、血缘分析或对外元数据发布，不改变 §1.3/§1.4 的服务边界。详细设计见 `docs/superpowers/specs/2026-09-03-metadata-management-design.md`。
 
 ### 1.5 治理能力框架（业务属性 / 数据属性 / 管理属性）
 
@@ -785,3 +789,4 @@ class EntityFieldAccessor:
 | v1.3 | 2026-09-01 | 定稿基线：正文清理过程性修订标注（版本痕迹归入本表），状态改为已定稿，进入实施 |
 | v1.3 | 2026-09-01 | 系统定位收敛：本系统只做存量数据治理与数据质量管理服务，申请/审批/金标/分发（BTP/OpenMetadata 发布）移出代码库；物料存量数据源由 golden_records 改为新建 material_records（MARA 风格，与 partner_records 对称）；DataStandard 属性方案合并：管理属性 owner/standard_source/dept_scope 三结构化列 + 业务属性 business_attrs JSON；**定稿基线**：正文清理过程性修订标注，新增 Phase 0 申请链路移除收尾任务，对照表同步定位变更 |
 | v1.4 | 2026-09-02 | 承认 AI 辅助治理层为正式范围：新增 §1.4.1（Agent 只出建议、Skill 确定性无副作用、归并仅返回 ready、Copilot 审批=治理裁决而非业务审批、LLM 可降级）；Phase 0 验收判据改写为"无**业务**申请/审批/金标/分发链路残留"；据此保留 T1-T8 构建的 agents/skills/llm_gateway 与 copilot/governance/owners/evidence 路由及对应前端页面，取消分支隔离动议 |
+| v1.5 | 2026-09-03 | 范围扩展元数据管理能力：新增 §1.4.2（实体元数据 / 字段登记册 / 业务术语表，字段登记册为数据标准引用字段的单一权威源）；落地 metadata_field / metadata_entity / glossary_term 三表与 /api/metadata 路由；设计详见 `docs/superpowers/specs/2026-09-03-metadata-management-design.md` |

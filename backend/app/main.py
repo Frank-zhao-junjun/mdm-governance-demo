@@ -10,7 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from app.api import copilot, data_import, data_standards, evidence, governance, owners, quality_checks, suspected_errors
+from app.api import copilot, data_import, data_standards, evidence, governance, metadata, owners, quality_checks, suspected_errors
 from app.core.auth import authenticate_user, create_access_token, require_any
 from app.core.config import settings
 from app.core.database import Base, engine
@@ -60,6 +60,7 @@ app.include_router(data_import.router)
 app.include_router(copilot.router)
 app.include_router(governance.router)
 app.include_router(owners.router)
+app.include_router(metadata.router)
 app.include_router(evidence.router)
 
 
