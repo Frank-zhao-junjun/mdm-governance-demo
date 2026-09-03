@@ -8,6 +8,22 @@
 
 ## 2026-09-03
 
+### 三项待办清零：favicon 404 / dev server 重启复验 / 跨工厂争议造数
+
+**做了什么**
+- 新增 `public/favicon.svg`（盾牌+对勾），`index.html` 补图标引用并顺手把 `lang="en"` 改为 `zh-CN`——全站 favicon 404 消除。
+- `seed_demo_tickets.py` 新增争议段：M10010/M10009 阀门对生成 `factory_agreements_json={"FA":"agree","FB":"oppose"}` 的 PENDING 归并工单（L1 cross_plant_disagreement），/disputes 会签视图有真实数据可演示。
+- 重启 3000 端口 dev server（旧 Vite 进程已跑 20+ 小时，PID 22620 终止后新起，v7.3.6 3938ms ready）。
+
+**验证证据**
+- /login 与 /disputes console 零报错（favicon 404 消失）。
+- /disputes 渲染「归并争议 · pending」卡：工厂 FA 同意归并 / 工厂 FB 反对归并，候选记录两条 ID 展示正常。
+- 新 server 上 Copilot 门禁点击复验：MutationObserver 实测 toast 立即弹出、存活 4206ms（标准 sonner 行为）。
+- 造数脚本重跑：`[dispute] 已存在，跳过`，幂等成立；当前待裁决 merge=3（含 1 张争议单）quality=2。
+
+**遗留/决策**
+- 「页面久置后点击无响应」根因仍未定位（偶发、重载即愈）；已排除代码层问题，处置口径：演示前重启 dev server 或用 `pnpm build` 产物。
+
 ### 七页浏览器人工走查完成 + Copilot 演示造数脚本
 
 **做了什么**
@@ -24,8 +40,8 @@
 
 **遗留/发现**
 - favicon.ico 404（全站，`index.html` 未引图标，小问题待修）。
-- 偶发：页面久置后按钮点击无响应（React 事件派发失效，无 toast 无请求，手动调 fiber onClick 正常，重载页面即恢复）——本会话观察到 3 次，干净环境复现不出；疑似 Vite dev server 长跑 + HMR 状态劣化，演示前建议重启 dev server 或直接用 `pnpm build` 产物，标记待观察。
-- 权责冲突页当前无跨工厂争议演示数据（空态正常渲染）；如演示剧本需要 S6 会签场景，需给造数脚本补争议数据（扩范围，另行决定）。
+- ~~偶发：页面久置后按钮点击无响应~~ —— dev server 重启后复验正常；根因未定位（偶发、重载即愈），处置口径改为「演示前重启 dev server 或用 build 产物」，见当日第二篇条目。
+- ~~权责冲突页当前无跨工厂争议演示数据~~ —— 已由 `seed_demo_tickets.py` 争议段补齐（FA 同意 / FB 反对），见当日第二篇条目。
 - 活动流存在两条同 trace 的 quality-agent 记录（造数脚本重跑副产物，非功能缺陷）。
 
 ## 2026-09-02

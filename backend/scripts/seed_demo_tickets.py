@@ -22,6 +22,7 @@ from app.core.llm_gateway import LLMGateway
 MERGE_PAIR_CODES = ("M10019", "M10005")
 NAMING_VIOLATOR_CODES = ("M1234", "MAT-00020", "M10021")
 MISSING_MEINS_CODES = ("MDM0001", "MDM0002")
+DISPUTE_PAIR_CODES = ("M10010", "M10009")
 
 
 def main() -> int:
@@ -106,6 +107,38 @@ def main() -> int:
             print(f"[merge] request_id={merge_request_id} ticket_id={merge.get('ticket_id')}")
 
         terminal = [models.TicketStatus.DONE, models.TicketStatus.REJECTED]
+
+        dispute_request_id = f"demo-ticket-dispute-{args.suffix}"
+        if db.query(models.MergeTicket).filter(models.MergeTicket.request_id == dispute_request_id).count():
+            print(f"[dispute] request_id={dispute_request_id} 已存在，跳过")
+        else:
+            pair = db.query(models.MaterialRecord).filter(
+                models.MaterialRecord.material_code.in_(DISPUTE_PAIR_CODES),
+            ).all()
+            if len(pair) != 2:
+                print(f"未找到争议对 {DISPUTE_PAIR_CODES}，跳过跨工厂争议造数（可选场景）")
+            else:
+                left, right = sorted(pair, key=lambda r: DISPUTE_PAIR_CODES.index(r.material_code))
+                db.add(models.MergeTicket(
+                    request_id=dispute_request_id,
+                    candidate_golden_ids=[left.id, right.id],
+                    suggested_golden_id=left.id,
+                    evidence_json={
+                        "status": "block",
+                        "suggestions": [],
+                        "conflicts": [{
+                            "type": "cross_plant_disagreement",
+                            "level": "L1",
+                            "message": "跨工厂归并争议",
+                            "detail": "FA 同意归并，FB 反对并主张 DN100/DN50 为不同物料",
+                        }],
+                    },
+                    status=models.TicketStatus.PENDING,
+                    factory_agreements_json={"FA": "agree", "FB": "oppose"},
+                ))
+                db.commit()
+                print(f"[dispute] request_id={dispute_request_id} 已创建（FA 同意 / FB 反对）")
+
         pending_merge = db.query(models.MergeTicket).filter(
             models.MergeTicket.status.notin_(terminal),
         ).count()
