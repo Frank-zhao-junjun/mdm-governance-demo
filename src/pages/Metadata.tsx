@@ -55,7 +55,6 @@ import {
   METADATA_LIMITS,
   METADATA_SOURCE_LABELS,
   METADATA_SOURCE_OPTIONS,
-  SENSITIVITY_LABELS,
   SENSITIVITY_OPTIONS,
   emptyEntityForm,
   emptyFieldForm,
@@ -99,13 +98,6 @@ const DEFAULT_LIMIT = 20;
 const LIMIT_OPTIONS = [20, 50, 100, 200];
 
 type MetadataTab = 'entities' | 'fields' | 'glossary';
-
-/** 敏感级别徽标配色：confidential 红 / internal 黄 / public 灰 */
-const SENSITIVITY_BADGE_CLASS: Record<SensitivityLevel, string> = {
-  confidential: 'border-red-200 bg-red-100 text-red-800',
-  internal: 'border-amber-200 bg-amber-100 text-amber-800',
-  public: 'border-gray-200 bg-gray-100 text-gray-700',
-};
 
 function FieldError({ message }: { message?: string }) {
   if (!message) return null;
@@ -435,15 +427,6 @@ function EntitiesPanel({ writable, onNavigateToFields }: { writable: boolean; on
                     <p className="mt-1 font-mono text-xs text-gray-400">{entity.entity_type}</p>
                   </div>
                   <div className="flex items-center gap-1">
-                    {entity.sensitivity_level && (
-                      <Badge
-                        className={`border font-normal ${
-                          SENSITIVITY_BADGE_CLASS[entity.sensitivity_level]
-                        }`}
-                      >
-                        {SENSITIVITY_LABELS[entity.sensitivity_level]}
-                      </Badge>
-                    )}
                     {writable && (
                       <Button
                         variant="ghost"
