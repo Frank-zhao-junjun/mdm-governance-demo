@@ -796,7 +796,7 @@ const FieldFormDialog: React.FC<FieldFormDialogProps> = (props) => {
 
 function FieldsPanel({ writable, initialEntityType }: { writable: boolean; initialEntityType?: EntityType | null }) {
   // 过滤 / 分页状态：映射到后端查询参数 entity_type / view_section / must_govern / keyword / skip / limit
-  const [entityType, setEntityType] = useState<EntityType | typeof ALL>(initialEntityType ?? ALL);
+  const [entityType, setEntityType] = useState<EntityType | typeof ALL>(ALL);
   const [viewSection, setViewSection] = useState<string>(ALL);
   /** 「只看必须治理」默认开启；关闭时不传 must_govern 参数（= 不限） */
   const [mustGovernOnly, setMustGovernOnly] = useState(true);
@@ -844,7 +844,9 @@ function FieldsPanel({ writable, initialEntityType }: { writable: boolean; initi
   const buildQuery = useCallback(() => {
     // 先用 MetadataFieldQuery 类型构造（键名与后端端点参数对齐），再序列化
     const query: MetadataFieldQuery = { skip, limit };
-    if (entityType !== ALL) query.entity_type = entityType;
+    // initialEntityType 优先级高于 entityType 选择器（从实体总览跳转时自动过滤）
+    const effectiveEntityType = initialEntityType ?? (entityType !== ALL ? entityType : undefined);
+    if (effectiveEntityType) query.entity_type = effectiveEntityType;
     if (viewSection !== ALL) query.view_section = viewSection;
     // 布尔参数序列化为字符串；开关关闭时省略参数表示「不限」
     if (mustGovernOnly) query.must_govern = true;
@@ -854,7 +856,7 @@ function FieldsPanel({ writable, initialEntityType }: { writable: boolean; initi
       params.set(key, String(value));
     }
     return params.toString();
-  }, [entityType, viewSection, mustGovernOnly, appliedKeyword, skip, limit]);
+  }, [entityType, viewSection, mustGovernOnly, appliedKeyword, skip, limit, initialEntityType]);
 
   const loadList = useCallback(
     () =>
@@ -1563,7 +1565,7 @@ const Metadata: React.FC = () => {
       </Tabs>
 
       {tab === 'entities' && <EntitiesPanel writable={writable} onNavigateToFields={handleNavigateToFields} />}
-      {tab === 'fields' && <FieldsPanel key={filterEntityType ?? 'all'} writable={writable} initialEntityType={filterEntityType} />}
+      {tab === 'fields' && <FieldsPanel writable={writable} initialEntityType={filterEntityType} />}
       {tab === 'glossary' && <GlossaryPanel writable={writable} />}
     </div>
   );
