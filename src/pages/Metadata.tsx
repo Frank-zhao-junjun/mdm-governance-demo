@@ -349,7 +349,7 @@ const EntityFormDialog: React.FC<EntityFormDialogProps> = (props) => {
   );
 };
 
-function EntitiesPanel({ writable }: { writable: boolean }) {
+function EntitiesPanel({ writable, onNavigateToFields }: { writable: boolean; onNavigateToFields: (entityType: EntityType) => void }) {
   const [entities, setEntities] = useState<MetadataEntity[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -423,7 +423,11 @@ function EntitiesPanel({ writable }: { writable: boolean }) {
       ) : (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
           {entities.map((entity) => (
-            <Card key={entity.entity_type} className="gap-3">
+            <Card
+              key={entity.entity_type}
+              className="gap-3 cursor-pointer hover:shadow-md transition-shadow"
+              onClick={() => onNavigateToFields(entity.entity_type as EntityType)}
+            >
               <CardHeader>
                 <div className="flex items-start justify-between gap-2">
                   <div>
@@ -807,9 +811,9 @@ const FieldFormDialog: React.FC<FieldFormDialogProps> = (props) => {
   );
 };
 
-function FieldsPanel({ writable }: { writable: boolean }) {
+function FieldsPanel({ writable, initialEntityType }: { writable: boolean; initialEntityType?: EntityType | null }) {
   // 过滤 / 分页状态：映射到后端查询参数 entity_type / view_section / must_govern / keyword / skip / limit
-  const [entityType, setEntityType] = useState<EntityType | typeof ALL>(ALL);
+  const [entityType, setEntityType] = useState<EntityType | typeof ALL>(initialEntityType ?? ALL);
   const [viewSection, setViewSection] = useState<string>(ALL);
   /** 「只看必须治理」默认开启；关闭时不传 must_govern 参数（= 不限） */
   const [mustGovernOnly, setMustGovernOnly] = useState(true);
@@ -1552,19 +1556,31 @@ function GlossaryPanel({ writable }: { writable: boolean }) {
 const Metadata: React.FC = () => {
   const writable = useMemo(() => canWrite(), []);
   const [tab, setTab] = useState<MetadataTab>('entities');
+  const [filterEntityType, setFilterEntityType] = useState<EntityType | null>(null);
+
+  const handleNavigateToFields = useCallback((entityType: EntityType) => {
+    setFilterEntityType(entityType);
+    setTab('fields');
+  }, []);
 
   return (
     <div className="space-y-4">
-      <Tabs value={tab} onValueChange={(value) => setTab(value as MetadataTab)}>
+      <Tabs value={tab} onValueChange={(value) => {
+        setTab(value as MetadataTab);
+        // 切换到非 fields tab 时清除过滤状态
+        if (value !== 'fields') {
+          setFilterEntityType(null);
+        }
+      }}>
         <TabsList>
           <TabsTrigger value="entities">实体总览</TabsTrigger>
-          <TabsTrigger value="fields">字段登记册</TabsTrigger>
+          <TabsTrigger value="fields">字段清单</TabsTrigger>
           <TabsTrigger value="glossary">业务术语</TabsTrigger>
         </TabsList>
       </Tabs>
 
-      {tab === 'entities' && <EntitiesPanel writable={writable} />}
-      {tab === 'fields' && <FieldsPanel writable={writable} />}
+      {tab === 'entities' && <EntitiesPanel writable={writable} onNavigateToFields={handleNavigateToFields} />}
+      {tab === 'fields' && <FieldsPanel key={filterEntityType ?? 'all'} writable={writable} initialEntityType={filterEntityType} />}
       {tab === 'glossary' && <GlossaryPanel writable={writable} />}
     </div>
   );
