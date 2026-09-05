@@ -5,7 +5,7 @@ from typing import Optional, List
 from fastapi import Depends, HTTPException, status, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import JWTError, jwt
-from passlib.context import CryptContext
+import bcrypt
 
 from app.core.config import settings
 
@@ -22,8 +22,9 @@ if not SECRET_KEY:
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 480  # 8 hours
 
-# Password hashing
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# Password hashing (bcrypt directly, passlib is deprecated on Python 3.13+)
+def hash_password(plain_password: str) -> str:
+    return bcrypt.hashpw(plain_password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
 
 # Security scheme
 security = HTTPBearer(auto_error=False)
@@ -35,41 +36,46 @@ MOCK_USERS = {
         "name": "张三",
         "department": "研发部",
         "role": "applicant",
-        "password": pwd_context.hash("password001"),
+        "password": hash_password("password001"),
     },
     "user002": {
         "id": "user002",
         "name": "李四",
         "department": "采购部",
         "role": "applicant",
-        "password": pwd_context.hash("password002"),
+        "password": hash_password("password002"),
     },
     "admin001": {
         "id": "admin001",
         "name": "王管理员",
         "department": "IT部",
         "role": "admin",
-        "password": pwd_context.hash("adminpass001"),
+        "password": hash_password("adminpass001"),
     },
     "dept001": {
         "id": "dept001",
         "name": "赵部长",
         "department": "生产部",
         "role": "dept_approver",
-        "password": pwd_context.hash("deptpass001"),
+        "password": hash_password("deptpass001"),
     },
     "data001": {
         "id": "data001",
         "name": "钱数据",
         "department": "数据治理部",
         "role": "data_admin",
-        "password": pwd_context.hash("datapass001"),
+        "password": hash_password("datapass001"),
     },
 }
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return pwd_context.verify(plain_password, hashed_password)
+    try:
+        return bcrypt.checkpw(
+            plain_password.encode("utf-8"), hashed_password.encode("utf-8")
+        )
+    except ValueError:
+        return False
 
 
 def get_user(user_id: str) -> Optional[dict]:

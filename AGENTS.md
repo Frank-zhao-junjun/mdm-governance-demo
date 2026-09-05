@@ -13,8 +13,8 @@
 - **前端**：React 19 + TypeScript ~5.9 + Vite 7 + Tailwind CSS 3.4 + shadcn/ui（new-york 风格，baseColor slate，lucide 图标）
   - 路由：react-router-dom v7；表单：react-hook-form + zod；图表：recharts；图标：lucide-react；通知：sonner
   - ESLint 9 flat config（`eslint.config.js`），typescript-eslint 8
-- **后端**：Python 3.12 + FastAPI 0.115 + SQLAlchemy 2.0 + Pydantic v2（`backend/requirements.txt` 全部精确钉版：fastapi==0.115.0、uvicorn[standard]==0.30.0、sqlalchemy==2.0.35、pydantic==2.9.0、python-jose[cryptography]==3.3.0、passlib[bcrypt]==1.7.4、bcrypt<5、psycopg2-binary==2.9.9、pytest==8.3.3、httpx==0.27.0）
-  - 认证：JWT（python-jose + passlib/bcrypt）
+- **后端**：Python 3.12 + FastAPI 0.115 + SQLAlchemy 2.0 + Pydantic v2（`backend/requirements.txt` 全部精确钉版：fastapi==0.115.0、uvicorn[standard]==0.30.0、sqlalchemy==2.0.35、pydantic==2.9.0、python-jose[cryptography]==3.3.0、bcrypt==4.2.1、psycopg2-binary==2.9.9、pytest==8.3.3、httpx==0.27.0）
+  - 认证：JWT（python-jose）+ 密码哈希（直接用 bcrypt 库；passlib 因 Python 3.13 crypt 弃用问题已于 2026-09 移除）
   - 数据库：SQLite（开发默认 `backend/mdm_governance.db`）/ PostgreSQL（生产）
   - LLM：`app/core/llm_gateway.py`（mock 默认 / DeepSeek，15s 超时 + 15s 熔断冷却 + 自动降级回 mock）
 - **包管理**：前端必须使用 pnpm（`package-lock.json` 为 npm 残留，以 `pnpm-lock.yaml` 为准）；后端使用 uv + `requirements.txt`
@@ -163,7 +163,7 @@ cd backend
 ENV=test SQLALCHEMY_DATABASE_URL="sqlite:///:memory:" python -m pytest   # 全部测试（357 个用例，约 57s）
 python -m pytest tests/test_auth.py                                       # 单文件
 # pytest.ini 将 app.* 的 DeprecationWarning 视为 error；
-# 第三方告警（passlib/pkg_resources/pydantic UserWarning）已显式忽略
+# 第三方告警（pkg_resources/pydantic UserWarning）已显式忽略
 ```
 
 ### CI
