@@ -1,0 +1,522 @@
+﻿[
+    {
+        "path":  "app\\.gitignore",
+        "bytes":  692
+    },
+    {
+        "path":  "app\\backend\\app\\api\\__init__.py",
+        "bytes":  26
+    },
+    {
+        "path":  "app\\backend\\app\\api\\applications.py",
+        "bytes":  16861
+    },
+    {
+        "path":  "app\\backend\\app\\api\\classifications.py",
+        "bytes":  2299
+    },
+    {
+        "path":  "app\\backend\\app\\api\\dashboard.py",
+        "bytes":  1494
+    },
+    {
+        "path":  "app\\backend\\app\\api\\golden_records.py",
+        "bytes":  1668
+    },
+    {
+        "path":  "app\\backend\\app\\core\\auth.py",
+        "bytes":  4729
+    },
+    {
+        "path":  "app\\backend\\app\\core\\config.py",
+        "bytes":  892
+    },
+    {
+        "path":  "app\\backend\\app\\core\\database.py",
+        "bytes":  842
+    },
+    {
+        "path":  "app\\backend\\app\\crud.py",
+        "bytes":  9079
+    },
+    {
+        "path":  "app\\backend\\app\\main.py",
+        "bytes":  3110
+    },
+    {
+        "path":  "app\\backend\\app\\models.py",
+        "bytes":  9892
+    },
+    {
+        "path":  "app\\backend\\app\\schemas.py",
+        "bytes":  5836
+    },
+    {
+        "path":  "app\\backend\\app\\services\\audit_service.py",
+        "bytes":  3318
+    },
+    {
+        "path":  "app\\backend\\app\\services\\btp_mock.py",
+        "bytes":  2100
+    },
+    {
+        "path":  "app\\backend\\app\\services\\code_generator.py",
+        "bytes":  2790
+    },
+    {
+        "path":  "app\\backend\\app\\services\\duplicate_detector.py",
+        "bytes":  3679
+    },
+    {
+        "path":  "app\\backend\\app\\services\\material_validator.py",
+        "bytes":  3638
+    },
+    {
+        "path":  "app\\backend\\app\\services\\openmetadata_sync.py",
+        "bytes":  4492
+    },
+    {
+        "path":  "app\\backend\\init_db.py",
+        "bytes":  4370
+    },
+    {
+        "path":  "app\\backend\\pytest.ini",
+        "bytes":  368
+    },
+    {
+        "path":  "app\\backend\\requirements.txt",
+        "bytes":  247
+    },
+    {
+        "path":  "app\\backend\\tests\\__init__.py",
+        "bytes":  53
+    },
+    {
+        "path":  "app\\backend\\tests\\conftest.py",
+        "bytes":  4800
+    },
+    {
+        "path":  "app\\backend\\tests\\test_api.py",
+        "bytes":  16826
+    },
+    {
+        "path":  "app\\backend\\tests\\test_audit_service.py",
+        "bytes":  9785
+    },
+    {
+        "path":  "app\\backend\\tests\\test_auth.py",
+        "bytes":  7608
+    },
+    {
+        "path":  "app\\backend\\tests\\test_code_generator.py",
+        "bytes":  6208
+    },
+    {
+        "path":  "app\\backend\\tests\\test_crud.py",
+        "bytes":  12091
+    },
+    {
+        "path":  "app\\backend\\tests\\test_duplicate_detector.py",
+        "bytes":  10274
+    },
+    {
+        "path":  "app\\backend\\tests\\test_material_validator.py",
+        "bytes":  12030
+    },
+    {
+        "path":  "app\\components.json",
+        "bytes":  461
+    },
+    {
+        "path":  "app\\e2e_test.py",
+        "bytes":  9780
+    },
+    {
+        "path":  "app\\eslint.config.js",
+        "bytes":  616
+    },
+    {
+        "path":  "app\\index.html",
+        "bytes":  311
+    },
+    {
+        "path":  "app\\info.md",
+        "bytes":  1385
+    },
+    {
+        "path":  "app\\package.json",
+        "bytes":  2603
+    },
+    {
+        "path":  "app\\package-lock.json",
+        "bytes":  304627
+    },
+    {
+        "path":  "app\\postcss.config.js",
+        "bytes":  80
+    },
+    {
+        "path":  "app\\README.md",
+        "bytes":  2555
+    },
+    {
+        "path":  "app\\src\\App.css",
+        "bytes":  606
+    },
+    {
+        "path":  "app\\src\\App.tsx",
+        "bytes":  1441
+    },
+    {
+        "path":  "app\\src\\components\\Layout.tsx",
+        "bytes":  3539
+    },
+    {
+        "path":  "app\\src\\components\\ui\\accordion.tsx",
+        "bytes":  2039
+    },
+    {
+        "path":  "app\\src\\components\\ui\\alert.tsx",
+        "bytes":  1614
+    },
+    {
+        "path":  "app\\src\\components\\ui\\alert-dialog.tsx",
+        "bytes":  3850
+    },
+    {
+        "path":  "app\\src\\components\\ui\\aspect-ratio.tsx",
+        "bytes":  280
+    },
+    {
+        "path":  "app\\src\\components\\ui\\avatar.tsx",
+        "bytes":  1083
+    },
+    {
+        "path":  "app\\src\\components\\ui\\badge.tsx",
+        "bytes":  1633
+    },
+    {
+        "path":  "app\\src\\components\\ui\\breadcrumb.tsx",
+        "bytes":  2357
+    },
+    {
+        "path":  "app\\src\\components\\ui\\button.tsx",
+        "bytes":  2218
+    },
+    {
+        "path":  "app\\src\\components\\ui\\button-group.tsx",
+        "bytes":  2209
+    },
+    {
+        "path":  "app\\src\\components\\ui\\calendar.tsx",
+        "bytes":  7793
+    },
+    {
+        "path":  "app\\src\\components\\ui\\card.tsx",
+        "bytes":  1987
+    },
+    {
+        "path":  "app\\src\\components\\ui\\carousel.tsx",
+        "bytes":  5542
+    },
+    {
+        "path":  "app\\src\\components\\ui\\chart.tsx",
+        "bytes":  10069
+    },
+    {
+        "path":  "app\\src\\components\\ui\\checkbox.tsx",
+        "bytes":  1219
+    },
+    {
+        "path":  "app\\src\\components\\ui\\collapsible.tsx",
+        "bytes":  786
+    },
+    {
+        "path":  "app\\src\\components\\ui\\command.tsx",
+        "bytes":  4804
+    },
+    {
+        "path":  "app\\src\\components\\ui\\context-menu.tsx",
+        "bytes":  8274
+    },
+    {
+        "path":  "app\\src\\components\\ui\\dialog.tsx",
+        "bytes":  3981
+    },
+    {
+        "path":  "app\\src\\components\\ui\\drawer.tsx",
+        "bytes":  4255
+    },
+    {
+        "path":  "app\\src\\components\\ui\\dropdown-menu.tsx",
+        "bytes":  8410
+    },
+    {
+        "path":  "app\\src\\components\\ui\\empty.tsx",
+        "bytes":  2396
+    },
+    {
+        "path":  "app\\src\\components\\ui\\field.tsx",
+        "bytes":  6145
+    },
+    {
+        "path":  "app\\src\\components\\ui\\form.tsx",
+        "bytes":  3764
+    },
+    {
+        "path":  "app\\src\\components\\ui\\hover-card.tsx",
+        "bytes":  1532
+    },
+    {
+        "path":  "app\\src\\components\\ui\\input.tsx",
+        "bytes":  962
+    },
+    {
+        "path":  "app\\src\\components\\ui\\input-group.tsx",
+        "bytes":  5065
+    },
+    {
+        "path":  "app\\src\\components\\ui\\input-otp.tsx",
+        "bytes":  2240
+    },
+    {
+        "path":  "app\\src\\components\\ui\\item.tsx",
+        "bytes":  4494
+    },
+    {
+        "path":  "app\\src\\components\\ui\\kbd.tsx",
+        "bytes":  862
+    },
+    {
+        "path":  "app\\src\\components\\ui\\label.tsx",
+        "bytes":  611
+    },
+    {
+        "path":  "app\\src\\components\\ui\\menubar.tsx",
+        "bytes":  8380
+    },
+    {
+        "path":  "app\\src\\components\\ui\\navigation-menu.tsx",
+        "bytes":  6664
+    },
+    {
+        "path":  "app\\src\\components\\ui\\pagination.tsx",
+        "bytes":  2717
+    },
+    {
+        "path":  "app\\src\\components\\ui\\popover.tsx",
+        "bytes":  1635
+    },
+    {
+        "path":  "app\\src\\components\\ui\\progress.tsx",
+        "bytes":  726
+    },
+    {
+        "path":  "app\\src\\components\\ui\\radio-group.tsx",
+        "bytes":  1466
+    },
+    {
+        "path":  "app\\src\\components\\ui\\resizable.tsx",
+        "bytes":  1980
+    },
+    {
+        "path":  "app\\src\\components\\ui\\scroll-area.tsx",
+        "bytes":  1645
+    },
+    {
+        "path":  "app\\src\\components\\ui\\select.tsx",
+        "bytes":  6344
+    },
+    {
+        "path":  "app\\src\\components\\ui\\separator.tsx",
+        "bytes":  699
+    },
+    {
+        "path":  "app\\src\\components\\ui\\sheet.tsx",
+        "bytes":  4076
+    },
+    {
+        "path":  "app\\src\\components\\ui\\sidebar.tsx",
+        "bytes":  21638
+    },
+    {
+        "path":  "app\\src\\components\\ui\\skeleton.tsx",
+        "bytes":  276
+    },
+    {
+        "path":  "app\\src\\components\\ui\\slider.tsx",
+        "bytes":  1996
+    },
+    {
+        "path":  "app\\src\\components\\ui\\sonner.tsx",
+        "bytes":  1020
+    },
+    {
+        "path":  "app\\src\\components\\ui\\spinner.tsx",
+        "bytes":  331
+    },
+    {
+        "path":  "app\\src\\components\\ui\\switch.tsx",
+        "bytes":  1177
+    },
+    {
+        "path":  "app\\src\\components\\ui\\table.tsx",
+        "bytes":  2434
+    },
+    {
+        "path":  "app\\src\\components\\ui\\tabs.tsx",
+        "bytes":  1969
+    },
+    {
+        "path":  "app\\src\\components\\ui\\textarea.tsx",
+        "bytes":  759
+    },
+    {
+        "path":  "app\\src\\components\\ui\\toggle.tsx",
+        "bytes":  1556
+    },
+    {
+        "path":  "app\\src\\components\\ui\\toggle-group.tsx",
+        "bytes":  2300
+    },
+    {
+        "path":  "app\\src\\components\\ui\\tooltip.tsx",
+        "bytes":  1892
+    },
+    {
+        "path":  "app\\src\\hooks\\use-mobile.ts",
+        "bytes":  565
+    },
+    {
+        "path":  "app\\src\\index.css",
+        "bytes":  2118
+    },
+    {
+        "path":  "app\\src\\main.tsx",
+        "bytes":  318
+    },
+    {
+        "path":  "app\\src\\pages\\ApplicationDetail.tsx",
+        "bytes":  7831
+    },
+    {
+        "path":  "app\\src\\pages\\Applications.tsx",
+        "bytes":  5396
+    },
+    {
+        "path":  "app\\src\\pages\\AuditTrace.tsx",
+        "bytes":  3591
+    },
+    {
+        "path":  "app\\src\\pages\\Classifications.tsx",
+        "bytes":  2425
+    },
+    {
+        "path":  "app\\src\\pages\\Dashboard.tsx",
+        "bytes":  6368
+    },
+    {
+        "path":  "app\\src\\pages\\GoldenRecords.tsx",
+        "bytes":  3434
+    },
+    {
+        "path":  "app\\src\\pages\\Home.tsx",
+        "bytes":  425
+    },
+    {
+        "path":  "app\\src\\pages\\Login.tsx",
+        "bytes":  2749
+    },
+    {
+        "path":  "app\\src\\pages\\NewApplication.tsx",
+        "bytes":  10202
+    },
+    {
+        "path":  "app\\src\\types\\api.ts",
+        "bytes":  3262
+    },
+    {
+        "path":  "app\\tailwind.config.js",
+        "bytes":  2777
+    },
+    {
+        "path":  "app\\tsconfig.app.json",
+        "bytes":  815
+    },
+    {
+        "path":  "app\\tsconfig.json",
+        "bytes":  232
+    },
+    {
+        "path":  "app\\tsconfig.node.json",
+        "bytes":  653
+    },
+    {
+        "path":  "app\\vite.config.ts",
+        "bytes":  501
+    },
+    {
+        "path":  "bg\\backcover_bg.png",
+        "bytes":  645342
+    },
+    {
+        "path":  "bg\\body_bg.png",
+        "bytes":  90679
+    },
+    {
+        "path":  "bg\\cover_bg.png",
+        "bytes":  632921
+    },
+    {
+        "path":  "download_manifest.json",
+        "bytes":  20473
+    },
+    {
+        "path":  "gen_bg.py",
+        "bytes":  6332
+    },
+    {
+        "path":  "input_attachments\\OpenMetadata_物料主数据自研服务集成设计.md",
+        "bytes":  33884
+    },
+    {
+        "path":  "input_attachments\\RalphLoop_物料主数据治理_E2E测试案例.md",
+        "bytes":  41614
+    },
+    {
+        "path":  "input_attachments\\RalphLoop_物料主数据治理_PRD.md",
+        "bytes":  22789
+    },
+    {
+        "path":  "input_attachments\\RalphLoop_物料主数据治理_最小US拆分.md",
+        "bytes":  35718
+    },
+    {
+        "path":  "input_attachments\\主数据治理实践指南.pptx",
+        "bytes":  7404291
+    },
+    {
+        "path":  "kimi_output_file_tree.json",
+        "bytes":  201340
+    },
+    {
+        "path":  "OpenMetadata_制造业物料治理_技术实施指南.md",
+        "bytes":  55323
+    },
+    {
+        "path":  "QA_Review_Report.md",
+        "bytes":  19313
+    },
+    {
+        "path":  "report.md",
+        "bytes":  27070
+    },
+    {
+        "path":  "SAP_Ariba_OpenMetadata_集成方案.md",
+        "bytes":  40863
+    },
+    {
+        "path":  "物料主数据治理调研问卷.docx",
+        "bytes":  1060243
+    }
+]

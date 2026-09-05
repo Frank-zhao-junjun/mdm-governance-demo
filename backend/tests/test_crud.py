@@ -1,301 +1,195 @@
-"""Unit tests for CRUD operations - focus on atomicity and correctness."""
+"""Unit tests for governance CRUD operations (SPEC §2.1, §3.1)."""
+from datetime import datetime, timedelta, timezone
+
 import pytest
-import threading
-import time
-from concurrent.futures import ThreadPoolExecutor
-from app import models, crud, schemas
+from sqlalchemy.exc import IntegrityError
+
+from app import crud, models
 
 
-class TestApplicationCRUD:
-    """Test application CRUD operations."""
+def _standard(**overrides):
+    data = dict(
+        entity_type="material",
+        sap_table="MARA",
+        field_name="MATNR",
+        field_label="物料编码",
+        data_type="string",
+        required=True,
+        pattern=r"^M\d{5}$",
+        unique=True,
+    )
+    data.update(overrides)
+    return data
 
-    def test_create_application(self, seeded_db):
-        """TC-CRUD-001: Create application generates app_no."""
-        data = schemas.ApplicationCreate(
-            material_name="测试物料",
-            classification_id="cls-child-001",
-            material_type=models.MaterialType.RAW
-        )
-        app = crud.create_application(seeded_db, data, "user001", "张三")
-        
-        assert app.id is not None
-        assert app.app_no.startswith("SQ-")
-        assert app.status == models.ApplicationStatus.DRAFT
-        assert app.created_by == "user001"
 
-    def test_get_application(self, seeded_db, sample_application):
-        """TC-CRUD-002: Get application by ID."""
-        found = crud.get_application(seeded_db, sample_application.id)
-        assert found is not None
-        assert found.id == sample_application.id
-        assert found.material_name == sample_application.material_name
+class TestDataStandardCRUD:
+    def test_list_returns_total_and_page(self, seeded_db):
+        items, total = crud.get_data_standards(seeded_db, skip=0, limit=50)
+        assert total == 2
+        assert len(items) == 2
 
-    def test_get_nonexistent_application(self, seeded_db):
-        """TC-CRUD-003: Non-existent application returns None."""
-        found = crud.get_application(seeded_db, "non-existent")
-        assert found is None
-
-    def test_update_application(self, seeded_db, sample_application):
-        """TC-CRUD-004: Update application fields."""
-        updated = crud.update_application(seeded_db, sample_application.id, {
-            "material_name": "更新后的名称",
-            "status": models.ApplicationStatus.PENDING_ADMIN
-        })
-        
-        assert updated is not None
-        assert updated.material_name == "更新后的名称"
-        assert updated.status == models.ApplicationStatus.PENDING_ADMIN
-        assert updated.updated_at is not None
-
-    def test_update_nonexistent_application(self, seeded_db):
-        """TC-CRUD-005: Update non-existent returns None."""
-        result = crud.update_application(seeded_db, "non-existent", {"material_name": "test"})
-        assert result is None
-
-    def test_list_applications(self, seeded_db):
-        """TC-CRUD-006: List applications with pagination."""
-        # Create multiple applications
+    def test_list_pagination_does_not_overlap(self, seeded_db):
         for i in range(5):
-            data = schemas.ApplicationCreate(
-                material_name=f"物料{i}",
-                classification_id="cls-child-001",
-                material_type=models.MaterialType.RAW
+            crud.create_data_standard(
+                seeded_db,
+                _standard(field_name=f"F{i:02d}", field_label=f"字段{i}"),
             )
-            crud.create_application(seeded_db, data, "user001", "张三")
-        
-        apps = crud.get_applications(seeded_db, skip=0, limit=3)
-        assert len(apps) == 3
-        
-        apps = crud.get_applications(seeded_db, skip=3, limit=10)
-        assert len(apps) == 2
+        # seeded_db carries MATNR + LIFNR, so MARA now has 6 rows
+        page1, total = crud.get_data_standards(seeded_db, sap_table="MARA", skip=0, limit=4)
+        page2, _ = crud.get_data_standards(seeded_db, sap_table="MARA", skip=4, limit=4)
 
-    def test_filter_by_status(self, seeded_db):
-        """TC-CRUD-007: Filter applications by status."""
-        data = schemas.ApplicationCreate(
-            material_name="测试物料",
-            classification_id="cls-child-001",
-            material_type=models.MaterialType.RAW
+        assert total == 6
+        assert len(page1) == 4
+        assert len(page2) == 2
+        assert {p.id for p in page1}.isdisjoint({p.id for p in page2})
+
+    def test_filter_by_entity_type(self, seeded_db):
+        items, total = crud.get_data_standards(seeded_db, entity_type="supplier")
+        assert total == 1
+        assert all(i.entity_type == "supplier" for i in items)
+
+    def test_create_persists_management_attributes(self, seeded_db):
+        created = crud.create_data_standard(
+            seeded_db,
+            _standard(
+                field_name="MEINS",
+                field_label="基本计量单位",
+                data_type="enum",
+                enum_values=["PC", "KG"],
+                owner="钱数据",
+                standard_source="sap",
+                dept_scope=["采购部"],
+                business_attrs={"standard_topic": "物料主数据"},
+            ),
         )
-        app = crud.create_application(seeded_db, data, "user001", "张三")
-        crud.update_application(seeded_db, app.id, {"status": models.ApplicationStatus.PENDING_ADMIN})
-        
-        draft_apps = crud.get_applications(seeded_db, status="draft")
-        pending_apps = crud.get_applications(seeded_db, status="pending_admin")
-        
-        assert all(a.status == models.ApplicationStatus.DRAFT for a in draft_apps)
-        assert all(a.status == models.ApplicationStatus.PENDING_ADMIN for a in pending_apps)
+        found = crud.get_data_standard(seeded_db, created.id)
+        assert found.owner == "钱数据"
+        assert found.standard_source == "sap"
+        assert found.dept_scope == ["采购部"]
+        assert found.enum_values == ["PC", "KG"]
+        assert found.business_attrs == {"standard_topic": "物料主数据"}
 
-    def test_filter_by_created_by(self, seeded_db):
-        """TC-CRUD-008: Filter applications by creator."""
-        data = schemas.ApplicationCreate(
-            material_name="用户1的物料",
-            classification_id="cls-child-001",
-            material_type=models.MaterialType.RAW
+    def test_update_changes_only_given_fields(self, seeded_db):
+        standard = crud.create_data_standard(seeded_db, _standard(field_name="MEINS"))
+        updated = crud.update_data_standard(
+            seeded_db, standard, {"field_label": "计量单位", "required": False}
         )
-        crud.create_application(seeded_db, data, "user001", "张三")
-        
-        data2 = schemas.ApplicationCreate(
-            material_name="用户2的物料",
-            classification_id="cls-child-001",
-            material_type=models.MaterialType.RAW
-        )
-        crud.create_application(seeded_db, data2, "user002", "李四")
-        
-        user1_apps = crud.get_applications(seeded_db, created_by="user001")
-        assert all(a.created_by == "user001" for a in user1_apps)
+        assert updated.field_label == "计量单位"
+        assert updated.required is False
+        assert updated.field_name == "MEINS"
+        assert updated.sap_table == "MARA"
+
+    def test_delete_removes_row(self, seeded_db):
+        standard = crud.create_data_standard(seeded_db, _standard(field_name="MEINS"))
+        crud.delete_data_standard(seeded_db, standard)
+        assert crud.get_data_standard(seeded_db, standard.id) is None
+
+    def test_unique_identity_key_is_enforced(self, seeded_db):
+        crud.create_data_standard(seeded_db, _standard(sap_table="MARM", field_name="MEINH"))
+        with pytest.raises(IntegrityError):
+            crud.create_data_standard(
+                seeded_db, _standard(sap_table="MARM", field_name="MEINH", field_label="重复")
+            )
+        seeded_db.rollback()
 
 
-class TestIncrementSeqAtomicity:
-    """Test atomic sequence increment - critical for preventing duplicate codes."""
+class TestFindDataStandardConflict:
+    def test_conflict_on_entity_table_field(self, seeded_db):
+        crud.create_data_standard(seeded_db, _standard(sap_table="MARM", field_name="MEINH"))
+        conflict = crud.find_data_standard_conflict(seeded_db, "material", "MARM", "MEINH")
+        assert conflict is not None
 
-    def test_increment_seq_basic(self, seeded_db):
-        """TC-CRUD-010: Basic sequence increment."""
-        seq1 = crud.increment_seq(seeded_db, "rule-001")
-        seq2 = crud.increment_seq(seeded_db, "rule-001")
-        
-        assert seq2 == seq1 + 1
+    def test_no_conflict_across_sap_tables(self, seeded_db):
+        crud.create_data_standard(seeded_db, _standard(sap_table="MARM", field_name="MEINH"))
+        assert crud.find_data_standard_conflict(seeded_db, "material", "MARA", "MEINH") is None
 
-    def test_increment_seq_returns_positive(self, seeded_db):
-        """TC-CRUD-011: Sequence should start positive."""
-        seq = crud.increment_seq(seeded_db, "rule-001")
-        assert seq > 0
+    def test_null_sap_table_matches_only_null(self, seeded_db):
+        crud.create_data_standard(seeded_db, _standard(sap_table=None, field_name="ZEXT"))
+        assert crud.find_data_standard_conflict(seeded_db, "material", None, "ZEXT") is not None
+        assert crud.find_data_standard_conflict(seeded_db, "material", "MARA", "ZEXT") is None
 
-    def test_increment_seq_invalid_rule(self, seeded_db):
-        """TC-CRUD-012: Invalid rule ID should return 0."""
-        seq = crud.increment_seq(seeded_db, "non-existent-rule")
-        assert seq == 0
 
-    def test_increment_seq_persists(self, seeded_db):
-        """TC-CRUD-013: Sequence should persist across operations."""
-        seq1 = crud.increment_seq(seeded_db, "rule-001")
-        
-        # Simulate new session
-        from app.core.database import SessionLocal
-        new_db = SessionLocal()
-        seq2 = crud.increment_seq(new_db, "rule-001")
-        new_db.close()
-        
-        # Note: In-memory SQLite won't persist across sessions,
-        # but this test verifies the concept for PostgreSQL
-        # For SQLite in-memory, seq2 will be a new database
-        # So we just verify the basic increment works
+class TestStockRecordCRUD:
+    def test_get_material_records(self, seeded_db):
+        records = crud.get_material_records(seeded_db)
+        assert [r.material_code for r in records] == ["M10001"]
 
-    def test_concurrent_increments_no_duplicates(self, seeded_db):
-        """TC-CRUD-014: Concurrent increments should produce unique values.
-        
-        This test simulates concurrent requests by calling increment_seq
-        rapidly from multiple threads.
-        """
-        # SQLite in-memory might not handle true concurrency well,
-        # but we test the atomic SQL pattern at least conceptually
-        rule = seeded_db.query(models.CodeRule).filter_by(id="rule-001").first()
-        rule.current_seq = 0
+    def test_material_records_respects_entity_ids(self, seeded_db):
+        existing = crud.get_material_records(seeded_db)
+        seeded_db.add(models.MaterialRecord(
+            material_code="M10002", material_name="垫片", attributes={}
+        ))
         seeded_db.commit()
-        
-        sequences = []
-        
-        def increment():
-            try:
-                # Each thread gets its own session to simulate real concurrency
-                from app.core.database import SessionLocal
-                db = SessionLocal()
-                seq = crud.increment_seq(db, "rule-001")
-                sequences.append(seq)
-                db.close()
-            except Exception as e:
-                # SQLite might throw concurrency errors
-                pass
-        
-        threads = [threading.Thread(target=increment) for _ in range(10)]
-        for t in threads:
-            t.start()
-        for t in threads:
-            t.join()
-        
-        # All successful increments should be unique
-        if len(sequences) > 1:
-            assert len(sequences) == len(set(sequences)), f"Duplicate sequences found: {sequences}"
+        records = crud.get_material_records(seeded_db, entity_ids=[existing[0].id])
+        assert len(records) == 1
+        assert records[0].material_code == "M10001"
 
+    def test_material_records_respects_limit(self, seeded_db):
+        for i in range(2, 12):
+            seeded_db.add(models.MaterialRecord(
+                material_code=f"M100{i:02d}", material_name=f"物料{i}", attributes={}
+            ))
+        seeded_db.commit()
+        assert len(crud.get_material_records(seeded_db, limit=7)) == 7
 
-class TestGoldenRecordCRUD:
-    """Test Golden Record CRUD operations."""
-
-    def test_create_golden_record(self, seeded_db):
-        """TC-CRUD-020: Create golden record."""
-        data = schemas.GoldenRecordBase(
-            material_code="M01-0101-00001",
-            material_name="测试不锈钢",
-            classification_id="cls-child-001",
-            material_type=models.MaterialType.RAW
-        )
-        gr = crud.create_golden_record(seeded_db, data, "app-001", "user001")
-        
-        assert gr.id is not None
-        assert gr.material_code == "M01-0101-00001"
-        assert gr.version == 1
-        assert gr.status == models.GoldenRecordStatus.ACTIVE
-
-    def test_get_golden_record_by_code(self, seeded_db):
-        """TC-CRUD-021: Get golden record by material code."""
-        data = schemas.GoldenRecordBase(
-            material_code="M01-0101-00001",
-            material_name="测试不锈钢",
-            classification_id="cls-child-001",
-            material_type=models.MaterialType.RAW
-        )
-        crud.create_golden_record(seeded_db, data, "app-001", "user001")
-        
-        found = crud.get_golden_record_by_code(seeded_db, "M01-0101-00001")
-        assert found is not None
-        assert found.material_code == "M01-0101-00001"
-
-    def test_update_golden_record(self, seeded_db):
-        """TC-CRUD-022: Update golden record fields."""
-        data = schemas.GoldenRecordBase(
-            material_code="M01-0101-00001",
-            material_name="测试不锈钢",
-            classification_id="cls-child-001",
-            material_type=models.MaterialType.RAW
-        )
-        gr = crud.create_golden_record(seeded_db, data, "app-001", "user001")
-        
-        updated = crud.update_golden_record(seeded_db, gr.id, {
-            "btp_published": True,
-            "btp_sync_id": "SYNC-123"
-        })
-        
-        assert updated.btp_published is True
-        assert updated.btp_sync_id == "SYNC-123"
-        assert updated.updated_at is not None
+    def test_partner_records_filter_by_entity_type(self, seeded_db):
+        seeded_db.add(models.PartnerRecord(
+            entity_type="customer", partner_code="2000000001",
+            partner_name="测试客户", attributes={},
+        ))
+        seeded_db.commit()
+        suppliers = crud.get_partner_records(seeded_db, entity_type="supplier")
+        customers = crud.get_partner_records(seeded_db, entity_type="customer")
+        assert [r.partner_code for r in suppliers] == ["1000000001"]
+        assert [r.partner_code for r in customers] == ["2000000001"]
 
 
 class TestAuditLogCRUD:
-    """Test audit log CRUD operations."""
-
-    def test_create_audit_log(self, seeded_db, sample_application):
-        """TC-CRUD-030: Create audit log entry."""
+    def test_step_name_accepts_enum_value_string(self, seeded_db):
+        """Regression: Enum column must persist values, not member names."""
         log = crud.create_audit_log(
             seeded_db,
-            step_id=f"{sample_application.app_no}-S1",
-            application_id=sample_application.id,
-            step_name=models.StepName.SUBMIT,
-            step_label="提交申请",
-            executed_by="user001",
-            executed_by_name="张三",
+            step_id="GOV-STANDARD-CREATE-00001",
+            step_name=models.StepName.STANDARD_CREATE,
+            step_label="创建数据标准",
+            executed_by="data001",
+            executed_by_name="钱数据",
             status="success",
-            status_label="成功"
+            status_label="成功",
         )
-        
-        assert log.id is not None
-        assert log.step_id == f"{sample_application.app_no}-S1"
-        assert log.status == "success"
+        assert log.step_name == models.StepName.STANDARD_CREATE
 
-    def test_get_application_audit_logs(self, seeded_db, sample_application):
-        """TC-CRUD-031: Get audit logs for application."""
-        # Create multiple logs
-        for i in range(3):
+    def test_get_audit_logs_orders_desc_with_paging(self, seeded_db):
+        base = datetime.now(timezone.utc)
+        for i in range(5):
             crud.create_audit_log(
                 seeded_db,
-                step_id=f"{sample_application.app_no}-S{i+1}",
-                application_id=sample_application.id,
-                step_name=models.StepName.SUBMIT,
-                step_label="提交申请",
-                executed_by="user001",
-                executed_by_name="张三",
+                step_id=f"GOV-STANDARD-UPDATE-{i + 1:05d}",
+                step_name=models.StepName.STANDARD_UPDATE,
+                step_label="更新数据标准",
+                executed_by="data001",
+                executed_by_name="钱数据",
                 status="success",
-                status_label="成功"
+                executed_at=base + timedelta(minutes=i),
             )
-        
-        logs = crud.get_application_audit_logs(seeded_db, sample_application.id)
-        assert len(logs) == 3
-        # Should be ordered by executed_at
-        assert logs[0].step_id == f"{sample_application.app_no}-S1"
+        logs = crud.get_audit_logs(seeded_db, skip=0, limit=3)
+        assert [log.step_id for log in logs] == [
+            "GOV-STANDARD-UPDATE-00005",
+            "GOV-STANDARD-UPDATE-00004",
+            "GOV-STANDARD-UPDATE-00003",
+        ]
+        assert len(crud.get_audit_logs(seeded_db, skip=3, limit=3)) == 2
 
-
-class TestDashboardStats:
-    """Test dashboard statistics."""
-
-    def test_empty_stats(self, seeded_db):
-        """TC-CRUD-040: Empty database stats should reflect seeded data."""
-        stats = crud.get_dashboard_stats(seeded_db)
-        
-        assert stats["total_applications"] == 0
-        assert stats["pending_admin"] == 0
-        assert stats["total_golden_records"] == 0
-        # seeded_db has 2 active classifications (parent + child)
-        assert stats["total_classifications"] == 2
-
-    def test_stats_with_data(self, seeded_db):
-        """TC-CRUD-041: Stats should reflect actual data."""
-        # Create applications in different statuses
-        for _ in range(3):
-            data = schemas.ApplicationCreate(
-                material_name="测试物料",
-                classification_id="cls-child-001",
-                material_type=models.MaterialType.RAW
-            )
-            crud.create_application(seeded_db, data, "user001", "张三")
-        
-        stats = crud.get_dashboard_stats(seeded_db)
-        assert stats["total_applications"] == 3
-        assert stats["pending_admin"] == 0  # All are draft
+    def test_audit_log_details_json_roundtrip(self, seeded_db):
+        log = crud.create_audit_log(
+            seeded_db,
+            step_id="GOV-QUALITY-RUN-00001",
+            step_name=models.StepName.QUALITY_RUN,
+            step_label="执行质量检测",
+            executed_by="admin001",
+            executed_by_name="王管理员",
+            status="success",
+            details={"batch_id": "b-1", "checked": 20, "failed": 4},
+        )
+        stored = seeded_db.query(models.AuditLog).filter(models.AuditLog.id == log.id).first()
+        assert stored.details["failed"] == 4

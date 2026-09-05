@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <title>制造业数据治理平台 - 项目介绍</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 60px 40px;
+            text-align: center;
+        }
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+        .content {
+            padding: 40px;
+        }
+        .section {
+            margin-bottom: 50px;
+        }
+        .section h2 {
+            color: #667eea;
+            font-size: 1.8em;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 3px solid #667eea;
+        }
+        .section h3 {
+            color: #764ba2;
+            font-size: 1.3em;
+            margin: 25px 0 15px 0;
+        }
+        .section p {
+            margin-bottom: 15px;
+            font-size: 1.05em;
+        }
+        .diagram {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 30px;
+            margin: 20px 0;
+            text-align: center;
+        }
+        .flow {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin: 20px 0;
+        }
+        .flow-item {
+            background: white;
+            border: 2px solid #667eea;
+            border-radius: 8px;
+            padding: 15px 20px;
+            font-weight: 600;
+            color: #667eea;
+            min-width: 120px;
+            text-align: center;
+        }
+        .flow-arrow {
+            font-size: 1.5em;
+            color: #764ba2;
+        }
+        .highlight {
+            background: linear-gradient(120deg, #ffeaa7 0%, #ffeaa7 100%);
+            background-repeat: no-repeat;
+            background-size: 100% 40%;
+            background-position: 0 90%;
+            padding: 0 4px;
+            font-weight: 600;
+        }
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+        .feature-card {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 25px;
+            border-left: 4px solid #667eea;
+        }
+        .feature-card h4 {
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 1.2em;
+        }
+        .feature-card p {
+            color: #666;
+            font-size: 0.95em;
+        }
+        .boundary {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+        .boundary-card {
+            border-radius: 12px;
+            padding: 25px;
+        }
+        .boundary-card.do {
+            background: #e8f5e9;
+            border-left: 4px solid #43a047;
+        }
+        .boundary-card.dont {
+            background: #fce4ec;
+            border-left: 4px solid #e53935;
+        }
+        .boundary-card h4 {
+            margin-bottom: 10px;
+            font-size: 1.2em;
+        }
+        .boundary-card.do h4 { color: #2e7d32; }
+        .boundary-card.dont h4 { color: #c62828; }
+        .tech-stack {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .tech-badge {
+            background: #667eea;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            font-weight: 600;
+        }
+        .footer {
+            background: #f8f9fa;
+            padding: 30px 40px;
+            text-align: center;
+            color: #666;
+            border-top: 1px solid #e0e0e0;
+        }
+        .back-link {
+            display: inline-block;
+            margin-top: 20px;
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 600;
+            padding: 10px 20px;
+            border: 2px solid #667eea;
+            border-radius: 8px;
+            transition: all 0.3s;
+        }
+        .back-link:hover {
+            background: #667eea;
+            color: white;
+        }
+        ul {
+            margin-left: 20px;
+            margin-bottom: 15px;
+        }
+        li {
+            margin-bottom: 8px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+        }
+        th, td {
+            border: 1px solid #e0e0e0;
+            padding: 10px 14px;
+            text-align: left;
+            font-size: 0.95em;
+        }
+        th {
+            background: #f8f9fa;
+            color: #667eea;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏭 制造业数据治理平台</h1>
+            <p>AI数据治理与数据质量管理平台 · v2.0.0</p>
+        </div>
+
+        <div class="content">
+            <div class="section">
+                <h2>📋 项目概述</h2>
+                <p>
+                    本平台是一个面向制造业的<span class="highlight">AI数据治理系统（AI Data Governance）</span>，
+                    针对物料、供应商、客户三类主数据的存量数据，建立
+                    <span class="highlight">数据标准 → 质量检测 → 疑似错误识别 → AI 辅助裁决 → 问题闭环</span>的完整治理能力。
+                </p>
+                <p>
+                    核心目标是让存量主数据<span class="highlight">可检测、可裁决、可追溯</span>：
+                    以数据标准为规则来源，以自动化检测为发现手段，以 AI Agent 为建议引擎，以人工裁决为最终关口，
+                    全程留痕、可审计。
+                </p>
+            </div>
+
+            <div class="section">
+                <h2>🚧 服务边界</h2>
+                <p>平台职能边界清晰：<strong>只提供数据治理与数据质量管理服务</strong>，不承接业务流程。</p>
+                <div class="boundary">
+                    <div class="boundary-card do">
+                        <h4>✅ 本平台负责</h4>
+                        <ul>
+                            <li>数据标准管理（业务 / 数据 / 管理三类属性）</li>
+                            <li>存量数据质量检测（批次 + 失败明细 + 报告）</li>
+                            <li>疑似错误识别（重复、不规范、异常）</li>
+                            <li>AI 辅助建议与 Copilot 人工裁决</li>
+                            <li>治理工单闭环、审计追踪、证据链</li>
+                        </ul>
+                    </div>
+                    <div class="boundary-card dont">
+                        <h4>🚫 本平台不负责</h4>
+                        <ul>
+                            <li>新增数据申请与业务审批流程</li>
+                            <li>Golden Data（金标数据）管理</li>
+                            <li>下游分发执行（ERP/BTP 发布）</li>
+                            <li>数据自动修复（只检测、报告、给建议）</li>
+                        </ul>
+                    </div>
+                </div>
+                <p>
+                    归并执行只输出<span class="highlight">建议与执行预检</span>：
+                    <code>merge-execute</code> 在校验批准状态后仅返回 <code>ready</code>，
+                    实际归并由外部执行器承担，平台不改写业务记录。
+                </p>
+            </div>
+
+            <div class="section">
+                <h2>🔄 核心治理闭环</h2>
+                <div class="diagram">
+                    <h3>AI数据治理主链路</h3>
+                    <div class="flow">
+                        <div class="flow-item">数据标准</div>
+                        <div class="flow-arrow">→</div>
+                        <div class="flow-item">规则派生</div>
+                        <div class="flow-arrow">→</div>
+                        <div class="flow-item">质量检测</div>
+                        <div class="flow-arrow">→</div>
+                        <div class="flow-item">疑似错误识别</div>
+                    </div>
+                    <div class="flow">
+                        <div class="flow-item" style="background: #9c27b0; color: white; border-color: #9c27b0;">AI Agent 建议</div>
+                        <div class="flow-arrow">→</div>
+                        <div class="flow-item" style="background: #ff9800; color: white; border-color: #ff9800;">Copilot 人工裁决</div>
+                        <div class="flow-arrow">→</div>
+                        <div class="flow-item" style="background: #28a745; color: white; border-color: #28a745;">工单闭环 + 证据链</div>
+                    </div>
+                    <p style="margin-top: 15px; font-size: 0.9em; color: #666;">
+                        质量检测执行链：rule_derivation（标准→规则派生）→ quality_runner（限额 + 装配 + 执行 + 单事务落库）→ suspected_error_runner（疑似错误，三键去重）
+                    </p>
+                </div>
+            </div>
+
+            <div class="section">
+                <h2>🎯 核心功能</h2>
+                <div class="feature-grid">
+                    <div class="feature-card">
+                        <h4>📐 数据标准管理</h4>
+                        <p>按业务属性、数据属性、管理属性三类维度定义字段标准：命名规范、值域范围、必填规则、编码模式，标准即规则来源</p>
+                    </div>
+                    <div class="feature-card">
+                        <h4>✅ 数据质量检测</h4>
+                        <p>标准自动派生检测规则（必填→空值、模式→格式等），人工触发批量检测，批次 + 失败明细持久化，支持质量报告</p>
+                    </div>
+                    <div class="feature-card">
+                        <h4>🔍 疑似错误识别</h4>
+                        <p>识别重复、不规范、异常数据；三键去重防重复上报，误报白名单与终态拦截，人工确认处理</p>
+                    </div>
+                    <div class="feature-card">
+                        <h4>🧬 重复识别与归并建议</h4>
+                        <p>中文感知分词 + 词元重叠度算法识别重复簇，输出归并建议；平台只出建议和预检，绝不直接合并业务记录</p>
+                    </div>
+                    <div class="feature-card">
+                        <h4>⚖️ Copilot 裁决</h4>
+                        <p>所有 AI 建议均需责任人裁决：批准 / 驳回 / 改判；高风险归并强制意见填写 + 二次确认 + 审批前证据快照</p>
+                    </div>
+                    <div class="feature-card">
+                        <h4>🤖 Agent 编排</h4>
+                        <p>StandardAgent / QualityAgent / DedupAgent 分工协作，编排器按 request_id 幂等、进程内锁串行化，全程 trace 可审计</p>
+                    </div>
+                    <div class="feature-card">
+                        <h4>📊 治理驾驶舱</h4>
+                        <p>质量得分、重复率、待办裁决、Agent 活动流一屏总览，治理 Owner 权责清晰</p>
+                    </div>
+                    <div class="feature-card">
+                        <h4>📥 CSV 批量导入</h4>
+                        <p>存量数据通过 CSV upsert 导入，单批上限 5,000 行，超限拒绝并要求分批</p>
+                    </div>
+                    <div class="feature-card">
+                        <h4>📜 审计追踪</h4>
+                        <p>审计日志 + Agent trace + 审批证据快照三层留痕，每个裁决可回溯到依据与执行者</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section">
+                <h2>🧠 AI 辅助治理层</h2>
+                <p>AI 治理链：<span class="highlight">LLM 网关 → Agent（trace 可审计）→ Skill（确定性、无副作用）→ 工单 → 人工裁决</span>。</p>
+                <table>
+                    <tr><th>层</th><th>职责</th><th>硬约束</th></tr>
+                    <tr><td>LLM 网关</td><td>统一调用入口，mock / DeepSeek 两种模式</td><td>15s 超时 + 熔断 + 自动降级回确定性结果，治理能力不依赖外部 LLM 可用性</td></tr>
+                    <tr><td>Agent</td><td>标准建议、质量工单指派（3 天 SLA）、归并建议工单</td><td>只出建议，不直接改写存量记录；失败可审计返回</td></tr>
+                    <tr><td>Skill</td><td>命名 / 属性 / 单位 / 质量规则 / 重复匹配的确定性判定</td><td>无副作用、禁止写库；与 LLM 输出冲突时以 Skill 为准（L1 覆盖 L3）</td></tr>
+                    <tr><td>工单 + 裁决</td><td>quality_ticket / merge_ticket 承载建议，Copilot 人工处置</td><td>高风险归并批准须意见 + 二次确认，留存 approval_evidence 快照</td></tr>
+                </table>
+            </div>
+
+            <div class="section">
+                <h2>🏗️ 系统架构</h2>
+                <div class="diagram">
+                    <h3>技术架构</h3>
+                    <div class="flow">
+                        <div class="flow-item" style="background: #61dafb; color: #282c34; border-color: #61dafb;">
+                            React 19<br/>
+                            <small>前端 SPA（10 页面）</small>
+                        </div>
+                        <div class="flow-arrow">↕</div>
+                        <div class="flow-item" style="background: #009688; color: white; border-color: #009688;">
+                            FastAPI<br/>
+                            <small>后端 API（8 路由模块）</small>
+                        </div>
+                        <div class="flow-arrow">↕</div>
+                        <div class="flow-item" style="background: #336791; color: white; border-color: #336791;">
+                            SQLite / PostgreSQL<br/>
+                            <small>14 张表 · 4 枚举</small>
+                        </div>
+                    </div>
+                    <p style="margin-top: 15px; font-size: 0.9em; color: #666;">
+                        后端分层：api（路由）→ agents / skills（AI 治理）→ services（业务服务）→ crud（数据访问）
+                    </p>
+                </div>
+
+                <h3>技术栈</h3>
+                <div class="tech-stack">
+                    <span class="tech-badge">React 19</span>
+                    <span class="tech-badge">TypeScript</span>
+                    <span class="tech-badge">Vite 7</span>
+                    <span class="tech-badge">Tailwind CSS</span>
+                    <span class="tech-badge">shadcn/ui</span>
+                    <span class="tech-badge">Python 3.12</span>
+                    <span class="tech-badge">FastAPI</span>
+                    <span class="tech-badge">SQLAlchemy 2.0</span>
+                    <span class="tech-badge">Pydantic v2</span>
+                    <span class="tech-badge">JWT</span>
+                    <span class="tech-badge">SQLite / PostgreSQL</span>
+                </div>
+            </div>
+
+            <div class="section">
+                <h2>🔐 安全与工程约束</h2>
+                <ul>
+                    <li><strong>JWT 认证</strong>：所有 API 必须携带有效 JWT，无免认证回退</li>
+                    <li><strong>密钥管理</strong>：生产环境强制 MDM_SECRET_KEY 环境变量，缺失即 fail-fast</li>
+                    <li><strong>归并门禁</strong>：merge-execute 仅 admin / data_admin 可调用，未批准返回 409，批准后只返回 ready</li>
+                    <li><strong>审批快照</strong>：高风险归并批准必须填写意见且二次确认，裁决前 status / evidence / trace 快照存档</li>
+                    <li><strong>Skill 无副作用</strong>：Skill 层只输出建议，禁止写库</li>
+                    <li><strong>编排幂等</strong>：按 request_id 检查已有工单，重复提交不产生重复工单</li>
+                    <li><strong>批量上限</strong>：实体批量操作上限 5,000，五处口径一致，超限拒绝不自动切批</li>
+                </ul>
+            </div>
+
+            <div class="section">
+                <h2>🚀 项目亮点</h2>
+                <ul>
+                    <li><strong>边界清晰</strong>：只做治理与质量，不越界承接业务流程，职责经得起架构评审</li>
+                    <li><strong>人机分工明确</strong>：AI 出建议、人做裁决，高风险动作强制意见 + 二次确认 + 快照</li>
+                    <li><strong>确定性优先</strong>：Skill 规则判定覆盖 LLM 不确定性输出，LLM 熔断降级不影响治理能力</li>
+                    <li><strong>全程可审计</strong>：审计日志 + Agent trace + 审批证据三层留痕</li>
+                    <li><strong>工程质量</strong>：后端 310 个 pytest 用例，CI 双 job（前端 lint + tsc + build / 后端 pytest）</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p><strong>制造业数据治理平台</strong> v2.0.0</p>
+            <p>AI数据治理与数据质量管理解决方案</p>
+            <a href="/" class="back-link">← 返回首页</a>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,26 +1,29 @@
-"""FastAPI main application entry point."""
-from fastapi import FastAPI, HTTPException, Depends
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+"""FastAPI main application entry point.
+
+Governance-only service: data standards + stock records + quality checks.
+Application/approval/golden-record/publish flows were removed (SPEC §1.4).
+"""
 import os
 
-from app.core.config import settings
+from fastapi import Depends, FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
+
+from app.api import copilot, data_import, data_standards, evidence, governance, metadata, owners, quality_checks, records, suspected_errors
 from app.core.auth import authenticate_user, create_access_token, require_any
-from app.api import classifications, applications, golden_records, dashboard, metadata_governance
-from app.core.database import engine, Base
-from app.core.schema_compat import ensure_schema_compatibility
+from app.core.config import settings
+from app.core.database import Base, engine
 
 # Create tables
 Base.metadata.create_all(bind=engine)
-ensure_schema_compatibility()
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
     version=settings.VERSION,
-    description="RalphLoop Material Master Data Governance Platform",
+    description="Stock-data governance service: standards + quality management",
     docs_url="/docs",
-    redoc_url="/redoc"
+    redoc_url="/redoc",
 )
 
 # CORS - restrict in production
@@ -41,7 +44,7 @@ app.add_middleware(
     allow_origins=origins,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allow_headers=["Authorization", "Content-Type"]
+    allow_headers=["Authorization", "Content-Type"],
 )
 
 # Static files (frontend)
@@ -50,23 +53,28 @@ if os.path.exists(static_dir):
     app.mount("/assets", StaticFiles(directory=os.path.join(static_dir, "assets")), name="assets")
 
 # Include routers
-app.include_router(classifications.router)
-app.include_router(applications.router)
-app.include_router(golden_records.router)
-app.include_router(dashboard.router)
-app.include_router(metadata_governance.router)
+app.include_router(data_standards.router)
+app.include_router(quality_checks.router)
+app.include_router(suspected_errors.router)
+app.include_router(data_import.router)
+app.include_router(copilot.router)
+app.include_router(governance.router)
+app.include_router(owners.router)
+app.include_router(metadata.router)
+app.include_router(evidence.router)
+app.include_router(records.router)
 
 
 @app.post("/api/auth/login")
 def login(credentials: dict):
     """Authenticate user and return JWT token.
-    
+
     Request body: {"user_id": "user001", "password": "password001"}
     """
     user = authenticate_user(credentials.get("user_id"), credentials.get("password"))
     if not user:
         raise HTTPException(status_code=401, detail="Invalid credentials")
-    
+
     token = create_access_token({"sub": user["id"], "role": user["role"]})
     return {
         "access_token": token,
@@ -76,7 +84,7 @@ def login(credentials: dict):
             "name": user["name"],
             "role": user["role"],
             "department": user["department"],
-        }
+        },
     }
 
 
@@ -89,9 +97,9 @@ def get_me(user: dict = Depends(require_any)):
 @app.get("/")
 def root():
     return {
-        "message": "RalphLoop MDM Governance API",
+        "message": "Stock Data Governance API",
         "version": settings.VERSION,
-        "docs": "/docs"
+        "docs": "/docs",
     }
 
 
@@ -101,4 +109,4 @@ def serve_spa(path: str):
     index_path = os.path.join(static_dir, "index.html")
     if os.path.exists(index_path) and not path.startswith("api") and not path.startswith("docs"):
         return FileResponse(index_path)
-    return {"message": "RalphLoop MDM Governance API", "version": settings.VERSION}
+    return {"message": "Stock Data Governance API", "version": settings.VERSION}

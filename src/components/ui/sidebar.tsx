@@ -608,6 +608,7 @@ function SidebarMenuSkeleton({
 }) {
   // Random width between 50 to 90%.
   const width = React.useMemo(() => {
+    // eslint-disable-next-line react-hooks/purity -- 骨架屏随机宽度仅在挂载时计算一次（shadcn/ui 上游写法）
     return `${Math.floor(Math.random() * 40) + 50}%`
   }, [])
 

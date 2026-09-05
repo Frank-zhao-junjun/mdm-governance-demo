@@ -1,12 +1,379 @@
 #!/usr/bin/env python3
-"""Initialize database with seed data for testing."""
-import sys
+"""Initialize database with seed data for the governance service (SPEC v1.3).
+
+Seeds: data standards (appendix fields) + stock records for material /
+supplier / customer (≥20 each, with deliberate dirty rows for detection demos)
++ 元数据（字段登记册 70 条 / 实体 3 条 / 术语 15 条，并回填 29 条标准的
+metadata_field_id，见 docs/superpowers/specs/2026-09-03-metadata-management-design.md §4）。
+"""
 import os
+import sys
+
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from sqlalchemy.orm import Session
-from app.core.database import SessionLocal, engine
 from app import models
+from app.core.database import SessionLocal, engine
+
+
+# ========== Data Standards (SPEC §9 appendix) ==========
+
+STANDARDS = [
+    # --- material / MARA ---
+    ("material", "MARA", "MATNR", "物料编码", "string", None, None, None, None, True, r"^M\d{5}$", True, "编码", "物料主编码，M + 5 位数字"),
+    ("material", "MARA", "MAKTX", "物料描述", "string", 40, None, None, None, True, None, False, "名称", "物料短文本描述"),
+    ("material", "MARA", "MEINS", "基本计量单位", "enum", None, None, None, ["KG", "G", "PC", "M", "L", "MM", "CM", "M2", "M3"], True, None, False, "计量", "基本计量单位（SAP CUNIT）"),
+    ("material", "MARA", "MATKL", "物料组", "enum", None, None, None, ["001", "002", "003", "004", "005"], True, None, False, "分类", "物料组编码"),
+    ("material", "MARA", "MTART", "物料类型", "enum", None, None, None, ["ROH", "HALB", "FERT", "HILF", "ERSA"], True, None, False, "分类", "SAP 物料类型"),
+    ("material", "MARA", "BRGEW", "毛重", "number", None, 0, 999999, None, False, None, False, "属性", "毛重（公斤）"),
+    ("material", "MARA", "NTGEW", "净重", "number", None, 0, 999999, None, False, None, False, "属性", "净重（公斤）"),
+    ("material", "MARA", "GEWEI", "重量单位", "enum", None, None, None, ["KG", "G", "T"], False, None, False, "计量", "重量单位"),
+    ("material", "MARC", "WERKS", "工厂", "string", None, None, None, None, True, None, False, "组织", "工厂（MARC 视图字段无存量数据源，检测时跳过并记录）"),
+    # --- supplier / BUT000 + BUT020 + BUT0BANK + LFA1 ---
+    ("supplier", "BUT000", "BU_TYPE", "BP 类型", "enum", None, None, None, ["1", "2"], True, None, False, "状态", "1=组织 2=个人"),
+    ("supplier", "BUT000", "NAME_ORG1", "组织名称 1", "string", 40, None, None, None, True, None, False, "名称", "供应商组织名称"),
+    ("supplier", "BUT000", "NAME_ORG2", "组织名称 2", "string", 40, None, None, None, False, None, False, "名称", "供应商组织名称补充"),
+    ("supplier", "BUT020", "STREET", "街道", "string", 60, None, None, None, False, None, False, "地址", "街道地址"),
+    ("supplier", "BUT020", "CITY1", "城市", "string", 40, None, None, None, True, None, False, "地址", "城市"),
+    ("supplier", "BUT020", "POST_CODE1", "邮编", "string", 10, None, None, None, False, r"^\d{6}$", False, "地址", "中国邮政编码 6 位数字"),
+    ("supplier", "BUT020", "COUNTRY", "国家", "enum", None, None, None, ["CN", "US", "DE", "JP", "SG"], True, None, False, "地址", "国家代码"),
+    ("supplier", "BUT0BANK", "BANKS", "银行代码", "string", 10, None, None, None, False, None, False, "财务", "开户行银行代码"),
+    ("supplier", "BUT0BANK", "BANKL", "银行账号", "string", 34, None, None, None, False, None, False, "财务", "银行账号"),
+    ("supplier", "LFA1", "LIFNR", "供应商编号", "string", 10, None, None, None, True, r"^[0-9]{10}$", True, "编码", "SAP 供应商编号 10 位数字"),
+    ("supplier", "LFA1", "NAME1", "供应商名称", "string", 40, None, None, None, True, None, False, "名称", "供应商名称（冗余列）"),
+    ("supplier", "LFA1", "LAND1", "国家", "enum", None, None, None, ["CN", "US", "DE", "JP", "SG"], True, None, False, "地址", "供应商国家代码"),
+    ("supplier", "LFA1", "ZTERM", "付款条件", "enum", None, None, None, ["0001", "0010", "0020", "0030"], True, None, False, "财务", "付款条件代码"),
+    # --- customer / KNA1 + BUT000/BUT020 复用 ---
+    ("customer", "KNA1", "KUNNR", "客户编号", "string", 10, None, None, None, True, r"^[0-9]{10}$", True, "编码", "SAP 客户编号 10 位数字"),
+    ("customer", "KNA1", "NAME1", "客户名称", "string", 40, None, None, None, True, None, False, "名称", "客户名称（冗余列）"),
+    ("customer", "KNA1", "LAND1", "国家", "enum", None, None, None, ["CN", "US", "DE", "JP", "SG"], True, None, False, "地址", "客户国家代码"),
+    ("customer", "KNA1", "ZTERM", "付款条件", "enum", None, None, None, ["0001", "0010", "0020", "0030"], True, None, False, "财务", "付款条件代码"),
+    ("customer", "BUT020", "CITY1", "城市", "string", 40, None, None, None, True, None, False, "地址", "城市"),
+    ("customer", "BUT020", "POST_CODE1", "邮编", "string", 10, None, None, None, False, r"^\d{6}$", False, "地址", "中国邮政编码 6 位数字"),
+    ("customer", "BUT020", "COUNTRY", "国家", "enum", None, None, None, ["CN", "US", "DE", "JP", "SG"], True, None, False, "地址", "国家代码"),
+]
+
+TOPIC_MAP = {"material": "物料", "supplier": "供应商", "customer": "客户"}
+
+
+def _standard_rows():
+    rows = []
+    for (entity, table, field, label, dtype, maxlen, minv, maxv, enums,
+         required, pattern, unique, subcategory, desc) in STANDARDS:
+        rows.append(models.DataStandard(
+            entity_type=entity,
+            sap_table=table,
+            field_name=field,
+            field_label=label,
+            data_type=dtype,
+            max_length=maxlen,
+            min_value=minv,
+            max_value=maxv,
+            enum_values=enums,
+            required=required,
+            pattern=pattern,
+            unique=unique,
+            business_attrs={"standard_topic": TOPIC_MAP[entity], "standard_subcategory": subcategory},
+            owner="张三",
+            standard_source="sap",
+            dept_scope=["采购部", "生产部", "财务部"],
+            description=desc,
+            sap_field_desc=f"{table}-{field}",
+        ))
+    return rows
+
+
+# ========== 元数据种子（设计文档 §4：70 字段 + 3 实体 + 15 术语） ==========
+
+# (entity_type, sap_table, field_name, field_label, data_type, max_length,
+#  view_section, standard_source, business_definition)
+# 字段清单严格照抄 docs/superpowers/specs/2026-09-03-metadata-management-design.md §4.1
+METADATA_FIELDS = [
+    # --- material：SAP 物料主数据基本视图（MARA/MAKT，30 条，standard_source=sap）---
+    ("material", "MARA", "MATNR", "物料编码", "string", 18, "基本视图", "sap", "物料主记录的唯一标识"),
+    ("material", "MAKT", "MAKTX", "物料描述", "string", 40, "基本视图", "sap", "物料的语言相关短文本描述"),
+    ("material", "MARA", "MTART", "物料类型", "string", 4, "基本视图", "sap", "物料的业务分类（ROH/HALB/FERT 等）"),
+    ("material", "MARA", "MBRSH", "行业领域", "string", 1, "基本视图", "sap", "物料所属行业领域代码"),
+    ("material", "MARA", "MATKL", "物料组", "string", 9, "基本视图", "sap", "物料组编码，用于分类统计与采购分析"),
+    ("material", "MARA", "MEINS", "基本计量单位", "string", 3, "基本视图", "sap", "物料数量管理的基本计量单位"),
+    ("material", "MARA", "SPART", "产品组", "string", 2, "基本视图", "sap", "产品组（分部）代码"),
+    ("material", "MARA", "PRDHA", "产品层次", "string", 18, "基本视图", "sap", "产品层次结构代码"),
+    ("material", "MARA", "BISMT", "旧物料号", "string", 18, "基本视图", "sap", "切换新编码前的旧物料编号"),
+    ("material", "MARA", "MSTAE", "跨工厂物料状态", "string", 2, "基本视图", "sap", "跨工厂维度的物料有效性状态"),
+    ("material", "MARA", "LVORM", "删除标记", "boolean", None, "基本视图", "sap", "标记物料主记录是否待归档删除"),
+    ("material", "MARA", "XCHPF", "批次管理标识", "boolean", None, "基本视图", "sap", "标识物料是否启用批次管理"),
+    ("material", "MARA", "NORMT", "行业标准", "string", 18, "基本视图", "sap", "物料遵循的行业标准号"),
+    ("material", "MARA", "WRKST", "基本物料", "string", 48, "基本视图", "sap", "可复用的通用基本物料参照"),
+    ("material", "MARA", "MTPOS_MARA", "通用项目类别组", "string", 4, "基本视图", "sap", "销售与分销的通用项目类别组"),
+    ("material", "MARA", "BRGEW", "毛重", "amount", None, "基本数据", "sap", "物料毛重"),
+    ("material", "MARA", "NTGEW", "净重", "amount", None, "基本数据", "sap", "物料净重"),
+    ("material", "MARA", "GEWEI", "重量单位", "string", 3, "基本数据", "sap", "毛重/净重的计量单位"),
+    ("material", "MARA", "VOLUM", "体积", "amount", None, "基本数据", "sap", "物料体积"),
+    ("material", "MARA", "VOLEH", "体积单位", "string", 3, "基本数据", "sap", "体积的计量单位"),
+    ("material", "MARA", "LAENG", "长度", "amount", None, "基本数据", "sap", "物料长度"),
+    ("material", "MARA", "BREIT", "宽度", "amount", None, "基本数据", "sap", "物料宽度"),
+    ("material", "MARA", "HOEHE", "高度", "amount", None, "基本数据", "sap", "物料高度"),
+    ("material", "MARA", "MEABM", "尺寸单位", "string", 3, "基本数据", "sap", "长宽高的计量单位"),
+    ("material", "MARA", "EAN11", "EAN/UPC 条码", "string", 18, "基本数据", "sap", "国际商品条码（EAN/UPC）"),
+    ("material", "MARA", "NUMTP", "EAN 类别", "string", 2, "基本数据", "sap", "EAN/UPC 条码类别"),
+    ("material", "MARA", "ERSDA", "创建日期", "date", None, "管理数据", "sap", "物料主记录创建日期"),
+    ("material", "MARA", "ERNAM", "创建人", "string", 12, "管理数据", "sap", "物料主记录创建人"),
+    ("material", "MARA", "LAEDA", "最后修改日期", "date", None, "管理数据", "sap", "物料主记录最后修改日期"),
+    ("material", "MARA", "AENAM", "修改人", "string", 12, "管理数据", "sap", "物料主记录最后修改人"),
+    # --- supplier：BUT000 + LFA1（20 条，standard_source=sap）---
+    ("supplier", "BUT000", "PARTNER", "业务伙伴编号", "string", 10, "基本视图", "sap", "业务伙伴主记录的唯一编号"),
+    ("supplier", "BUT000", "TYPE", "业务伙伴类别", "string", 1, "基本视图", "sap", "业务伙伴类别（1=组织 2=个人）"),
+    ("supplier", "BUT000", "BU_GROUP", "业务伙伴分组", "string", 4, "基本视图", "sap", "决定编号区间与字段控制的伙伴分组"),
+    ("supplier", "BUT000", "BPEXT", "业务伙伴外部编号", "string", 20, "基本视图", "sap", "外部系统中的伙伴编号"),
+    ("supplier", "BUT000", "TITLE", "称谓", "string", 4, "基本视图", "sap", "业务伙伴称谓代码"),
+    ("supplier", "BUT000", "NAME_ORG1", "组织名称 1", "string", 40, "基本视图", "sap", "供应商组织名称第一行"),
+    ("supplier", "BUT000", "NAME_ORG2", "组织名称 2", "string", 40, "基本视图", "sap", "供应商组织名称第二行"),
+    ("supplier", "BUT000", "BU_SORT1", "搜索项 1", "string", 20, "基本视图", "sap", "伙伴检索排序字段 1"),
+    ("supplier", "BUT000", "BU_SORT2", "搜索项 2", "string", 20, "基本视图", "sap", "伙伴检索排序字段 2"),
+    ("supplier", "BUT000", "MC_NAME1", "检索名称", "string", 35, "基本视图", "sap", "伙伴匹配码检索名称"),
+    ("supplier", "LFA1", "LIFNR", "供应商编号", "string", 10, "基本视图", "sap", "SAP 供应商主记录的唯一编号"),
+    ("supplier", "LFA1", "KTOKK", "供应商账户组", "string", 4, "基本视图", "sap", "决定编号区间与字段选择的供应商账户组"),
+    ("supplier", "LFA1", "LAND1", "国家代码", "string", 3, "地址", "sap", "供应商所在国家代码"),
+    ("supplier", "LFA1", "REGIO", "地区（省/州）", "string", 3, "地址", "sap", "供应商所在地区（省/州）代码"),
+    ("supplier", "LFA1", "ORT01", "城市", "string", 35, "地址", "sap", "供应商所在城市"),
+    ("supplier", "LFA1", "PSTLZ", "邮政编码", "string", 10, "地址", "sap", "供应商邮政编码"),
+    ("supplier", "LFA1", "STRAS", "街道地址", "string", 35, "地址", "sap", "供应商街道及门牌号"),
+    ("supplier", "LFA1", "STCD1", "税号 1", "string", 16, "税务", "sap", "供应商税务登记号"),
+    ("supplier", "LFA1", "TELF1", "电话", "string", 16, "通讯", "sap", "供应商第一联系电话"),
+    ("supplier", "LFA1", "SMTP_ADDR", "电子邮箱", "string", 241, "通讯", "sap", "供应商电子邮箱地址"),
+    # --- supplier：Ariba SLP（5 条，standard_source=ariba_slp）---
+    ("supplier", "ARIBA_SLP", "SMVendorID", "SLP 供应商 ID", "string", 50, "采购", "ariba_slp", "Ariba SLP 平台供应商唯一标识"),
+    ("supplier", "ARIBA_SLP", "ERPVendorID", "ERP 供应商编号映射", "string", 50, "采购", "ariba_slp", "SLP 供应商与 ERP 供应商编号的映射"),
+    ("supplier", "ARIBA_SLP", "TaxID", "税务登记号", "string", 50, "采购", "ariba_slp", "SLP 采集的供应商税务登记号"),
+    ("supplier", "ARIBA_SLP", "DUNSNumber", "邓白氏编码（DUNS）", "string", 9, "采购", "ariba_slp", "邓白氏全球企业唯一识别编码"),
+    ("supplier", "ARIBA_SLP", "RiskLevel", "风险等级", "string", 20, "采购", "ariba_slp", "SLP 评估的供应商风险等级"),
+    # --- customer：BUT000 + KNA1（15 条，standard_source=sap）---
+    ("customer", "BUT000", "PARTNER", "业务伙伴编号", "string", 10, "基本视图", "sap", "业务伙伴主记录的唯一编号"),
+    ("customer", "BUT000", "TYPE", "业务伙伴类别", "string", 1, "基本视图", "sap", "业务伙伴类别（1=组织 2=个人）"),
+    ("customer", "BUT000", "BU_GROUP", "业务伙伴分组", "string", 4, "基本视图", "sap", "决定编号区间与字段控制的伙伴分组"),
+    ("customer", "BUT000", "NAME_ORG1", "组织名称 1", "string", 40, "基本视图", "sap", "客户组织名称第一行"),
+    ("customer", "BUT000", "NAME_ORG2", "组织名称 2", "string", 40, "基本视图", "sap", "客户组织名称第二行"),
+    ("customer", "BUT000", "BU_SORT1", "搜索项 1", "string", 20, "基本视图", "sap", "伙伴检索排序字段 1"),
+    ("customer", "BUT000", "MC_NAME1", "检索名称", "string", 35, "基本视图", "sap", "伙伴匹配码检索名称"),
+    ("customer", "KNA1", "KUNNR", "客户编号", "string", 10, "基本视图", "sap", "SAP 客户主记录的唯一编号"),
+    ("customer", "KNA1", "KTOKD", "客户账户组", "string", 4, "基本视图", "sap", "决定编号区间与字段选择的客户账户组"),
+    ("customer", "KNA1", "LAND1", "国家代码", "string", 3, "地址", "sap", "客户所在国家代码"),
+    ("customer", "KNA1", "REGIO", "地区（省/州）", "string", 3, "地址", "sap", "客户所在地区（省/州）代码"),
+    ("customer", "KNA1", "ORT01", "城市", "string", 35, "地址", "sap", "客户所在城市"),
+    ("customer", "KNA1", "BRAN1", "行业代码", "string", 10, "基本视图", "sap", "客户所属行业代码"),
+    ("customer", "KNA1", "STCD1", "税号 1", "string", 16, "税务", "sap", "客户税务登记号"),
+    ("customer", "KNA1", "SMTP_ADDR", "电子邮箱", "string", 241, "通讯", "sap", "客户电子邮箱地址"),
+]
+
+# (entity_type, display_name, business_definition, data_owner, dept, tags, sensitivity_level)
+# 严格照抄设计文档 §4.2
+METADATA_ENTITIES = [
+    ("material", "物料主数据", "企业生产经营所用物料的主记录", "张三", "数据管理部", ["核心主数据", "SAP"], "internal"),
+    ("supplier", "供应商主数据", "提供物资与服务的供应商主记录", "张三", "数据管理部", ["核心主数据", "SAP", "Ariba SLP"], "internal"),
+    ("customer", "客户主数据", "购买企业产品与服务的客户主记录", "张三", "数据管理部", ["核心主数据", "SAP"], "internal"),
+]
+
+# (term, definition, aliases)
+# 术语清单严格照抄设计文档 §4.3
+GLOSSARY_TERMS = [
+    ("物料编码", "标识物料主记录的唯一编码", ["料号", "物料号"]),
+    ("物料描述", "物料的语言相关短文本", ["物料名称"]),
+    ("物料类型", "SAP 中对物料的业务分类", ["MTART"]),
+    ("物料组", "用于分类统计与采购分析的物料分组编码", ["MATKL"]),
+    ("基本计量单位", "物料数量管理的基本计量单位", ["基本单位", "MEINS"]),
+    ("业务伙伴", "与公司发生业务往来的组织或个人的统一主记录", ["BP", "Business Partner"]),
+    ("业务伙伴分组", "决定业务伙伴编号区间与字段控制的分组", ["BP 分组"]),
+    ("供应商编号", "SAP 供应商主记录的唯一编号", ["LIFNR"]),
+    ("客户编号", "SAP 客户主记录的唯一编号", ["KUNNR"]),
+    ("账户组", "决定编号区间与字段选择的伙伴账户分组", ["供应商账户组", "客户账户组"]),
+    ("税号", "税务登记机关颁发的纳税人识别号", ["STCD1", "纳税人识别号"]),
+    ("邓白氏编码（DUNS）", "邓白氏全球企业唯一识别编码", ["DUNS", "D-U-N-S"]),
+    ("搜索项", "用于快速检索业务伙伴的排序字段", ["排序字段", "BU_SORT1"]),
+    ("删除标记", "标识主记录待归档删除的标志位", ["LVORM"]),
+    ("批次管理", "按批次跟踪库存与质量的管理方式", ["批次标识", "XCHPF"]),
+]
+
+# 术语 → 字段登记册关联：term -> (entity_type, sap_table, field_name)
+TERM_FIELD_LINKS = {
+    "物料编码": ("material", "MARA", "MATNR"),
+    "物料描述": ("material", "MAKT", "MAKTX"),
+    "物料类型": ("material", "MARA", "MTART"),
+    "物料组": ("material", "MARA", "MATKL"),
+    "基本计量单位": ("material", "MARA", "MEINS"),
+    "业务伙伴": ("supplier", "BUT000", "PARTNER"),
+    "业务伙伴分组": ("supplier", "BUT000", "BU_GROUP"),
+    "供应商编号": ("supplier", "LFA1", "LIFNR"),
+    "客户编号": ("customer", "KNA1", "KUNNR"),
+    "账户组": ("supplier", "LFA1", "KTOKK"),
+    "税号": ("supplier", "LFA1", "STCD1"),
+    "邓白氏编码（DUNS）": ("supplier", "ARIBA_SLP", "DUNSNumber"),
+    "搜索项": ("supplier", "BUT000", "BU_SORT1"),
+    "删除标记": ("material", "MARA", "LVORM"),
+    "批次管理": ("material", "MARA", "XCHPF"),
+}
+
+
+def seed_metadata(db):
+    """播种元数据：术语表 → 实体元数据 → 字段登记册（含术语关联）。
+
+    返回 {"fields": {(entity_type, sap_table, field_name): MetadataField},
+          "terms": {term: GlossaryTerm}}，供数据标准回填使用。
+    """
+    terms_by_name = {}
+    for term, definition, aliases in GLOSSARY_TERMS:
+        item = models.GlossaryTerm(term=term, definition=definition, aliases=aliases)
+        db.add(item)
+        terms_by_name[term] = item
+    db.flush()  # 先取 term.id 供字段关联
+
+    for (entity_type, display_name, business_definition, data_owner, dept,
+         tags, sensitivity_level) in METADATA_ENTITIES:
+        db.add(models.MetadataEntity(
+            entity_type=entity_type,
+            display_name=display_name,
+            business_definition=business_definition,
+            data_owner=data_owner,
+            dept=dept,
+            tags=tags,
+            sensitivity_level=sensitivity_level,
+        ))
+
+    # 反查表：字段三键 -> 术语
+    field_key_to_term = {key: term for term, key in TERM_FIELD_LINKS.items()}
+
+    fields_by_key = {}
+    for (entity_type, sap_table, field_name, field_label, data_type, max_length,
+         view_section, standard_source, business_definition) in METADATA_FIELDS:
+        field = models.MetadataField(
+            entity_type=entity_type,
+            sap_table=sap_table,
+            field_name=field_name,
+            field_label=field_label,
+            data_type=data_type,
+            max_length=max_length,
+            view_section=view_section,
+            standard_source=standard_source,
+            business_definition=business_definition,
+            must_govern=True,
+        )
+        term_key = field_key_to_term.get((entity_type, sap_table, field_name))
+        if term_key is not None:
+            field.glossary_term_id = terms_by_name[term_key].id
+        db.add(field)
+        fields_by_key[(entity_type, sap_table, field_name)] = field
+    db.flush()  # 取 field.id 供标准回填
+
+    return {"fields": fields_by_key, "terms": terms_by_name}
+
+
+def backfill_standard_metadata_links(db, standards, fields_by_key):
+    """按 (entity_type, sap_table, field_name) 回填 DataStandard.metadata_field_id。
+
+    未命中登记册的标准字段先补一条登记册条目（must_govern=True，
+    standard_source 沿用标准的），再回填，保证 29/29 关联。
+    返回回填条数。
+    """
+    linked = 0
+    for std in standards:
+        key = (std.entity_type, std.sap_table, std.field_name)
+        field = fields_by_key.get(key)
+        if field is None:
+            # 标准字段不在 §4.1 清单（如 BUT020/BUT0BANK/WERKS），补登记册条目
+            field = models.MetadataField(
+                entity_type=std.entity_type,
+                sap_table=std.sap_table,
+                field_name=std.field_name,
+                field_label=std.field_label,
+                data_type=std.data_type,
+                max_length=std.max_length,
+                view_section="补充登记",
+                standard_source=std.standard_source,
+                business_definition=std.description,
+                must_govern=True,
+            )
+            db.add(field)
+            db.flush()  # 取补登记条目的 field.id
+            fields_by_key[key] = field
+        std.metadata_field_id = field.id
+        linked += 1
+    return linked
+
+
+# ========== Stock Records (mock, with deliberate dirty rows) ==========
+
+MATERIALS = [
+    # (code, name, attrs) — 干净基线
+    ("M10001", "六角螺栓 M8×30 镀锌", {"MTART": "ROH", "MEINS": "PC", "MATKL": "001", "BRGEW": 0.02, "NTGEW": 0.018, "GEWEI": "KG"}),
+    ("M10002", "六角螺栓 M10×40 镀锌", {"MTART": "ROH", "MEINS": "PC", "MATKL": "001", "BRGEW": 0.04, "NTGEW": 0.035, "GEWEI": "KG"}),
+    ("M10003", "不锈钢板 304 δ2.0", {"MTART": "ROH", "MEINS": "KG", "MATKL": "001", "BRGEW": 12.5, "NTGEW": 12.4, "GEWEI": "KG"}),
+    ("M10004", "铝合金型材 6063-T5", {"MTART": "ROH", "MEINS": "M", "MATKL": "001", "BRGEW": 2.1, "NTGEW": 2.0, "GEWEI": "KG"}),
+    ("M10005", "深沟球轴承 6205-2RS", {"MTART": "HALB", "MEINS": "PC", "MATKL": "002", "BRGEW": 0.13, "NTGEW": 0.12, "GEWEI": "KG"}),
+    ("M10006", "油封 TC 35×52×7", {"MTART": "HALB", "MEINS": "PC", "MATKL": "002", "BRGEW": 0.02, "NTGEW": 0.015, "GEWEI": "KG"}),
+    ("M10007", "减速机 RV063-30-E", {"MTART": "FERT", "MEINS": "PC", "MATKL": "003", "BRGEW": 12.0, "NTGEW": 11.2, "GEWEI": "KG"}),
+    ("M10008", "三相异步电机 Y2-132-4", {"MTART": "FERT", "MEINS": "PC", "MATKL": "003", "BRGEW": 85.0, "NTGEW": 82.0, "GEWEI": "KG"}),
+    ("M10009", "低压气动阀门 Z642H-16C-DN50", {"MTART": "FERT", "MEINS": "PC", "MATKL": "003", "BRGEW": 9.5, "NTGEW": 9.0, "GEWEI": "KG"}),
+    ("M10010", "低压气动阀门 Z642H-16C-DN100", {"MTART": "FERT", "MEINS": "PC", "MATKL": "003", "BRGEW": 18.0, "NTGEW": 17.2, "GEWEI": "KG"}),
+    ("M10011", "液压油 L-HM46", {"MTART": "HILF", "MEINS": "L", "MATKL": "004", "BRGEW": 17.5, "NTGEW": 17.0, "GEWEI": "KG"}),
+    ("M10012", "润滑脂 NLGI-2", {"MTART": "HILF", "MEINS": "KG", "MATKL": "004", "BRGEW": 1.0, "NTGEW": 0.95, "GEWEI": "KG"}),
+    ("M10013", "刀具 合金立铣刀 D10", {"MTART": "HILF", "MEINS": "PC", "MATKL": "004", "BRGEW": 0.08, "NTGEW": 0.07, "GEWEI": "KG"}),
+    ("M10014", "易损件 密封圈套装", {"MTART": "ERSA", "MEINS": "SET", "MATKL": "005", "BRGEW": 0.5, "NTGEW": 0.45, "GEWEI": "KG"}),
+    ("M10015", "备件 接触器 CJX2-2510", {"MTART": "ERSA", "MEINS": "PC", "MATKL": "005", "BRGEW": 0.3, "NTGEW": 0.28, "GEWEI": "KG"}),
+    ("M10016", "万用表 FLUKE-15B+", {"MTART": "ERSA", "MEINS": "PC", "MATKL": "005", "BRGEW": 0.4, "NTGEW": 0.35, "GEWEI": "KG"}),
+    # --- 故意脏数据（供检测演示）---
+    ("M1234", "六角螺栓 M8x30 热镀锌", {"MTART": "ROH", "MEINS": "PC", "MATKL": "001", "BRGEW": 0.02, "NTGEW": 0.018, "GEWEI": "KG"}),          # 编码长度错误 + 与 M10001 名称近似
+    ("MAT-00020", "不锈钢板 304 δ2", {"MTART": "ROH", "MEINS": "KG", "MATKL": "001", "BRGEW": 12.5, "NTGEW": 12.4, "GEWEI": "KG"}),           # 编码格式错误 + 名称与 M10003 近似
+    ("M10019", "深沟球轴承 6205 2RS", {"MTART": "XXX", "MEINS": "PC", "MATKL": "002", "BRGEW": 0.13, "NTGEW": 0.12, "GEWEI": "KG"}),          # MTART 非法枚举
+    ("M10020", "油封 TC 45×62×8", {"MTART": "HALB", "MATKL": "002", "BRGEW": 0.03, "NTGEW": -0.01, "GEWEI": "KG"}),                          # 缺 MEINS + 净重为负
+    ("M10021", "测试物料 待补充", {"MTART": "ROH", "MEINS": "PC", "MATKL": "001", "BRGEW": 0.1, "NTGEW": 0.09, "GEWEI": "KG"}),              # naming 违例：占位/无意义文本
+    ("M10022", "ＡＢＳ树脂 ＰＣ－２", {"MTART": "ROH", "MEINS": "PC", "MATKL": "001", "BRGEW": 0.5, "NTGEW": 0.48, "GEWEI": "KG"}),           # naming 违例：全角字母数字
+]
+
+SUPPLIERS = [
+    ("1000000001", "华成精密机械有限公司", {"BU_TYPE": "1", "NAME_ORG1": "华成精密机械有限公司", "STREET": "金桥路 88 号", "CITY1": "上海", "POST_CODE1": "201206", "COUNTRY": "CN", "LAND1": "CN", "ZTERM": "0010"}),
+    ("1000000002", "远东液压设备股份有限公司", {"BU_TYPE": "1", "NAME_ORG1": "远东液压设备股份有限公司", "CITY1": "常州", "POST_CODE1": "213000", "COUNTRY": "CN", "LAND1": "CN", "ZTERM": "0020"}),
+    ("1000000003", "宁波海天塑机集团", {"BU_TYPE": "1", "NAME_ORG1": "宁波海天塑机集团", "CITY1": "宁波", "POST_CODE1": "315800", "COUNTRY": "CN", "LAND1": "CN", "ZTERM": "0010"}),
+    ("1000000004", "沈阳机床股份有限公司", {"BU_TYPE": "1", "NAME_ORG1": "沈阳机床股份有限公司", "CITY1": "沈阳", "POST_CODE1": "110142", "COUNTRY": "CN", "LAND1": "CN", "ZTERM": "0030"}),
+    ("1000000005", "博世力士乐（中国）有限公司", {"BU_TYPE": "1", "NAME_ORG1": "博世力士乐（中国）有限公司", "CITY1": "上海", "POST_CODE1": "200131", "COUNTRY": "CN", "LAND1": "CN", "ZTERM": "0020"}),
+    ("1000000006", "SMC（中国）有限公司", {"BU_TYPE": "1", "NAME_ORG1": "SMC（中国）有限公司", "CITY1": "北京", "POST_CODE1": "100176", "COUNTRY": "CN", "LAND1": "CN", "ZTERM": "0010"}),
+    ("1000000007", "杭州轴承试验研究中心", {"BU_TYPE": "1", "NAME_ORG1": "杭州轴承试验研究中心", "CITY1": "杭州", "POST_CODE1": "310000", "COUNTRY": "CN", "LAND1": "CN", "ZTERM": "0020"}),
+    ("1000000008", "广州密封件工业公司", {"BU_TYPE": "1", "NAME_ORG1": "广州密封件工业公司", "CITY1": "广州", "POST_CODE1": "510000", "COUNTRY": "CN", "LAND1": "CN", "ZTERM": "0010"}),
+    ("1000000009", "武汉钢铁集团金属资源有限公司", {"BU_TYPE": "1", "NAME_ORG1": "武汉钢铁集团金属资源有限公司", "CITY1": "武汉", "POST_CODE1": "430000", "COUNTRY": "CN", "LAND1": "CN", "ZTERM": "0030"}),
+    ("1000000010", "宝钢钢材贸易有限公司", {"BU_TYPE": "1", "NAME_ORG1": "宝钢钢材贸易有限公司", "CITY1": "上海", "POST_CODE1": "201900", "COUNTRY": "CN", "LAND1": "CN", "ZTERM": "0020"}),
+    ("1000000011", "昆山华成精密机械有限公司", {"BU_TYPE": "1", "NAME_ORG1": "昆山华成精密机械有限公司", "CITY1": "昆山", "POST_CODE1": "215300", "COUNTRY": "CN", "LAND1": "CN", "ZTERM": "0010"}),
+    ("1000000012", "托克斯冲压设备（苏州）", {"BU_TYPE": "1", "NAME_ORG1": "托克斯冲压设备（苏州）", "CITY1": "苏州", "POST_CODE1": "215000", "COUNTRY": "CN", "LAND1": "CN", "ZTERM": "0020"}),
+    ("1000000013", "詹姆斯顿轴承贸易公司", {"BU_TYPE": "1", "NAME_ORG1": "詹姆斯顿轴承贸易公司", "CITY1": "天津", "POST_CODE1": "300000", "COUNTRY": "CN", "LAND1": "CN", "ZTERM": "0010"}),
+    ("1000000014", "费斯托（中国）有限公司", {"BU_TYPE": "1", "NAME_ORG1": "费斯托（中国）有限公司", "CITY1": "上海", "POST_CODE1": "200233", "COUNTRY": "CN", "LAND1": "CN", "ZTERM": "0020"}),
+    ("1000000015", "无锡油缸制造厂", {"BU_TYPE": "1", "NAME_ORG1": "无锡油缸制造厂", "CITY1": "无锡", "POST_CODE1": "214000", "COUNTRY": "CN", "LAND1": "CN", "ZTERM": "0030"}),
+    ("1000000016", "德阳重型装备配件公司", {"BU_TYPE": "1", "NAME_ORG1": "德阳重型装备配件公司", "CITY1": "德阳", "POST_CODE1": "618000", "COUNTRY": "CN", "LAND1": "CN", "ZTERM": "0010"}),
+    # --- 故意脏数据 ---
+    ("SUP-00017", "华成精密机械有限公", {"BU_TYPE": "1", "NAME_ORG1": "华成精密机械有限公", "CITY1": "上海", "POST_CODE1": "201206", "COUNTRY": "CN", "LAND1": "CN", "ZTERM": "0010"}),  # 编码格式错误 + 名称与 0001 近似
+    ("12345", "杭州轴承试验中心", {"BU_TYPE": "1", "NAME_ORG1": "杭州轴承试验中心", "POST_CODE1": "31000", "COUNTRY": "CN", "LAND1": "CN", "ZTERM": "0020"}),                     # 编码短 + 缺 CITY1 + 邮编 5 位
+    ("1000000019", "广州密封件工业公司", {"BU_TYPE": "1", "NAME_ORG1": "广州密封件工业公司", "CITY1": "广州", "POST_CODE1": "510000", "COUNTRY": "CN", "LAND1": "XX"}),                # 与 0008 完全重名 + LAND1 非法
+    ("1000000020", "重庆齿轮箱有限责任公司", {"BU_TYPE": "1", "NAME_ORG1": "重庆齿轮箱有限责任公司", "CITY1": "重庆", "POST_CODE1": "402262", "COUNTRY": "CN", "LAND1": "CN"}),           # 缺 ZTERM（必填）
+]
+
+CUSTOMERS = [
+    ("2000000001", "一汽解放汽车有限公司", {"CITY1": "长春", "POST_CODE1": "130011", "COUNTRY": "CN", "LAND1": "CN", "ZTERM": "0010"}),
+    ("2000000002", "东风商用车有限公司", {"CITY1": "十堰", "POST_CODE1": "442000", "COUNTRY": "CN", "LAND1": "CN", "ZTERM": "0020"}),
+    ("2000000003", "陕西重型汽车有限公司", {"CITY1": "西安", "POST_CODE1": "710200", "COUNTRY": "CN", "LAND1": "CN", "ZTERM": "0020"}),
+    ("2000000004", "徐州工程机械集团", {"CITY1": "徐州", "POST_CODE1": "221004", "COUNTRY": "CN", "LAND1": "CN", "ZTERM": "0030"}),
+    ("2000000005", "三一重工股份有限公司", {"CITY1": "长沙", "POST_CODE1": "410100", "COUNTRY": "CN", "LAND1": "CN", "ZTERM": "0020"}),
+    ("2000000006", "中联重科股份有限公司", {"CITY1": "长沙", "POST_CODE1": "410205", "COUNTRY": "CN", "LAND1": "CN", "ZTERM": "0020"}),
+    ("2000000007", "安徽合力股份有限公司", {"CITY1": "合肥", "POST_CODE1": "230601", "COUNTRY": "CN", "LAND1": "CN", "ZTERM": "0010"}),
+    ("2000000008", "杭叉集团股份有限公司", {"CITY1": "杭州", "POST_CODE1": "310000", "COUNTRY": "CN", "LAND1": "CN", "ZTERM": "0010"}),
+    ("2000000009", "柳工机械股份有限公司", {"CITY1": "柳州", "POST_CODE1": "545007", "COUNTRY": "CN", "LAND1": "CN", "ZTERM": "0020"}),
+    ("2000000010", "厦门工程机械股份有限公司", {"CITY1": "厦门", "POST_CODE1": "361026", "COUNTRY": "CN", "LAND1": "CN", "ZTERM": "0030"}),
+    ("2000000011", "北方重工集团有限公司", {"CITY1": "沈阳", "POST_CODE1": "110141", "COUNTRY": "CN", "LAND1": "CN", "ZTERM": "0020"}),
+    ("2000000012", "山东重工集团有限公司", {"CITY1": "济南", "POST_CODE1": "250022", "COUNTRY": "CN", "LAND1": "CN", "ZTERM": "0020"}),
+    ("2000000013", "太平洋精锻股份有限公司", {"CITY1": "泰州", "POST_CODE1": "225500", "COUNTRY": "CN", "LAND1": "CN", "ZTERM": "0010"}),
+    ("2000000014", "宁波拓普集团股份有限公司", {"CITY1": "宁波", "POST_CODE1": "315800", "COUNTRY": "CN", "LAND1": "CN", "ZTERM": "0020"}),
+    ("2000000015", "广东鸿图科技股份有限公司", {"CITY1": "肇庆", "POST_CODE1": "526238", "COUNTRY": "CN", "LAND1": "CN", "ZTERM": "0010"}),
+    ("2000000016", "重庆青山工业有限责任公司", {"CITY1": "重庆", "POST_CODE1": "402762", "COUNTRY": "CN", "LAND1": "CN", "ZTERM": "0020"}),
+    # --- 故意脏数据 ---
+    ("CUS-0017", "三一重工股份公司", {"CITY1": "长沙", "POST_CODE1": "410100", "COUNTRY": "CN", "LAND1": "CN", "ZTERM": "0020"}),   # 编码格式错误 + 与 0005 近似
+    ("2000000018", "中联重科股份有限公司", {"CITY1": "长沙", "POST_CODE1": "410205", "LAND1": "CN", "ZTERM": "0020"}),                # 与 0006 完全重名 + 缺 COUNTRY
+    ("2000000019", "杭叉集团股份公司", {"CITY1": "杭州", "POST_CODE1": "3100", "COUNTRY": "CN", "LAND1": "CN", "ZTERM": "0010"}),     # 与 0008 近似 + 邮编 4 位
+    ("2000000020", "浙江长城减速机有限公司", {"CITY1": "嘉兴", "POST_CODE1": "314000", "COUNTRY": "CN", "LAND1": "CN"}),              # 缺 ZTERM（必填）
+]
 
 
 def init_db():
@@ -14,121 +381,64 @@ def init_db():
     # Drop and recreate
     models.Base.metadata.drop_all(bind=engine)
     models.Base.metadata.create_all(bind=engine)
-    
+
     db = SessionLocal()
-    
     try:
-        # Seed Classifications (Level 1 - 大类)
-        raw = models.MaterialClassification(
-            id="cls-raw-001", code="01", name="原材料", level=1,
-            description="直接用于产品生产加工的物料"
-        )
-        semi = models.MaterialClassification(
-            id="cls-semi-001", code="02", name="半成品", level=1,
-            description="经过部分加工的中间产品"
-        )
-        finished = models.MaterialClassification(
-            id="cls-fin-001", code="03", name="成品", level=1,
-            description="已完成全部工序的产品"
-        )
-        aux = models.MaterialClassification(
-            id="cls-aux-001", code="04", name="辅助材料", level=1,
-            description="辅助生产的物料"
-        )
-        spare = models.MaterialClassification(
-            id="cls-spa-001", code="05", name="备品备件", level=1,
-            description="设备维修替换件"
-        )
-        
-        db.add_all([raw, semi, finished, aux, spare])
+        standards = _standard_rows()
+        db.add_all(standards)
+        db.flush()  # 先取 standard.id 供规则行 standard_id FK
+
+        # 元数据种子 + 标准回填（设计文档 §4.4：29 条标准全部关联登记册）
+        metadata = seed_metadata(db)
+        linked = backfill_standard_metadata_links(db, standards, metadata["fields"])
+        assert linked == len(standards), "数据标准元数据回填条数与标准条数不一致"
+
+        # 质量检测规则：由数据标准派生（SPEC §2.4 + Phase 2 设计决策 1）
+        from app.services.rule_derivation import derive_rule_rows
+
+        db.add_all(derive_rule_rows(standards))
+
+        db.add_all([
+            models.MaterialRecord(
+                material_code=code,
+                material_name=name,
+                attributes=attrs,
+                source_system="mock_sap",
+                status="active",
+            )
+            for code, name, attrs in MATERIALS
+        ])
+
+        db.add_all([
+            models.PartnerRecord(
+                entity_type="supplier",
+                partner_code=code,
+                partner_name=name,
+                attributes=attrs,
+                source_system="mock_sap",
+                status="active",
+            )
+            for code, name, attrs in SUPPLIERS
+        ])
+
+        db.add_all([
+            models.PartnerRecord(
+                entity_type="customer",
+                partner_code=code,
+                partner_name=name,
+                attributes=attrs,
+                source_system="mock_sap",
+                status="active",
+            )
+            for code, name, attrs in CUSTOMERS
+        ])
+
         db.commit()
-        
-        # Seed Classifications (Level 2 - 中类)
-        metal = models.MaterialClassification(
-            id="cls-metal-001", code="0101", name="金属材料", level=2,
-            parent_id="cls-raw-001"
-        )
-        plastic = models.MaterialClassification(
-            id="cls-plastic-001", code="0102", name="塑料", level=2,
-            parent_id="cls-raw-001"
-        )
-        elec = models.MaterialClassification(
-            id="cls-elec-001", code="0103", name="电子元器件", level=2,
-            parent_id="cls-raw-001"
-        )
-        
-        db.add_all([metal, plastic, elec])
-        db.commit()
-        
-        # Seed Classifications (Level 3 - 小类)
-        steel_plate = models.MaterialClassification(
-            id="cls-steel-plate-001", code="010101", name="钢板", level=3,
-            parent_id="cls-metal-001"
-        )
-        stainless = models.MaterialClassification(
-            id="cls-stainless-001", code="010102", name="不锈钢", level=3,
-            parent_id="cls-metal-001"
-        )
-        engineering_plastic = models.MaterialClassification(
-            id="cls-engineering-plastic-001", code="010201", name="工程塑料", level=3,
-            parent_id="cls-plastic-001"
-        )
-        db.add_all([steel_plate, stainless, engineering_plastic])
-        db.commit()
-        
-        # Seed Attribute Templates
-        templates = [
-            models.AttributeTemplate(
-                id="tpl-001", classification_id="cls-stainless-001",
-                field_name="material_grade", field_label="材质等级",
-                field_type="select", is_required=True,
-                options=["Q235", "Q345", "304不锈钢", "316不锈钢", "45#钢"]
-            ),
-            models.AttributeTemplate(
-                id="tpl-002", classification_id="cls-stainless-001",
-                field_name="thickness", field_label="厚度(mm)",
-                field_type="number", is_required=True
-            ),
-            models.AttributeTemplate(
-                id="tpl-003", classification_id="cls-stainless-001",
-                field_name="width", field_label="宽度(mm)",
-                field_type="number", is_required=False
-            ),
-            models.AttributeTemplate(
-                id="tpl-004", classification_id="cls-engineering-plastic-001",
-                field_name="plastic_type", field_label="塑料类型",
-                field_type="select", is_required=True,
-                options=["ABS", "PP", "PE", "PVC", "PA66"]
-            ),
-            models.AttributeTemplate(
-                id="tpl-005", classification_id="cls-engineering-plastic-001",
-                field_name="color", field_label="颜色",
-                field_type="text", is_required=False
-            ),
-        ]
-        db.add_all(templates)
-        db.commit()
-        
-        # Seed Code Rules
-        rules = [
-            models.CodeRule(
-                id="rule-001", name="金属材料编码规则",
-                pattern="{大类}-{小类}-{流水}",
-                prefix="M", seq_length=5,
-                classification_id="cls-stainless-001"
-            ),
-            models.CodeRule(
-                id="rule-002", name="塑料编码规则",
-                pattern="{大类}-{小类}-{流水}",
-                prefix="P", seq_length=5,
-                classification_id="cls-engineering-plastic-001"
-            ),
-        ]
-        db.add_all(rules)
-        db.commit()
-        
-        print("✅ Database initialized with seed data")
-        
+
+        print("✅ Governance DB initialized: standards + stock records (with dirty rows)")
+        print(f"   元数据：{len(METADATA_FIELDS)} 字段 / {len(METADATA_ENTITIES)} 实体 / "
+              f"{len(GLOSSARY_TERMS)} 术语；标准回填 {linked}/{len(standards)}")
+
     finally:
         db.close()
 

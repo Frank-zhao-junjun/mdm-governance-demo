@@ -1,196 +1,383 @@
-"""CRUD operations for all entities."""
-from typing import List, Optional
+"""CRUD operations for the stock-data governance service."""
+from typing import Dict, List, Optional, Tuple
+
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
-from sqlalchemy import desc, text
 
-from app import models, schemas
-from datetime import datetime, timezone
+from app import models
 
 
-# ========== Classification ==========
+# ========== Data Standards ==========
 
-def create_classification(db: Session, data: schemas.ClassificationCreate) -> models.MaterialClassification:
-    db_item = models.MaterialClassification(**data.model_dump())
-    db.add(db_item)
-    db.commit()
-    db.refresh(db_item)
-    return db_item
-
-
-def get_classification(db: Session, classification_id: str) -> Optional[models.MaterialClassification]:
-    return db.query(models.MaterialClassification).filter(models.MaterialClassification.id == classification_id).first()
-
-
-def get_classifications(db: Session, level: Optional[int] = None, parent_id: Optional[str] = None) -> List[models.MaterialClassification]:
-    query = db.query(models.MaterialClassification).filter(models.MaterialClassification.is_active == True)
-    if level:
-        query = query.filter(models.MaterialClassification.level == level)
-    if parent_id is not None:
-        query = query.filter(models.MaterialClassification.parent_id == parent_id)
-    return query.order_by(models.MaterialClassification.code).all()
-
-
-def get_classification_tree(db: Session) -> List[models.MaterialClassification]:
-    """Get all level 1 classifications with children."""
-    return db.query(models.MaterialClassification).filter(
-        models.MaterialClassification.level == 1,
-        models.MaterialClassification.is_active == True
-    ).order_by(models.MaterialClassification.code).all()
-
-
-# ========== Attribute Template ==========
-
-def create_attribute_template(db: Session, data: schemas.AttributeTemplateCreate) -> models.AttributeTemplate:
-    db_item = models.AttributeTemplate(**data.model_dump())
-    db.add(db_item)
-    db.commit()
-    db.refresh(db_item)
-    return db_item
-
-
-def get_attribute_templates(db: Session, classification_id: str) -> List[models.AttributeTemplate]:
-    return db.query(models.AttributeTemplate).filter(
-        models.AttributeTemplate.classification_id == classification_id
-    ).order_by(models.AttributeTemplate.sort_order).all()
-
-
-# ========== Application ==========
-
-def generate_app_no(db: Session) -> str:
-    """Generate application number: SQ-YYYY-NNNNN"""
-    year = datetime.now().year
-    prefix = f"SQ-{year}-"
-    count = db.query(models.MaterialApplication).filter(
-        models.MaterialApplication.app_no.like(f"{prefix}%")
-    ).count()
-    return f"{prefix}{count + 1:05d}"
-
-
-def create_application(db: Session, data: schemas.ApplicationCreate, user_id: str, user_name: str) -> models.MaterialApplication:
-    db_item = models.MaterialApplication(
-        app_no=generate_app_no(db),
-        created_by=user_id,
-        created_by_name=user_name,
-        **data.model_dump(exclude_unset=True)
-    )
-    db.add(db_item)
-    db.commit()
-    db.refresh(db_item)
-    return db_item
-
-
-def get_application(db: Session, app_id: str) -> Optional[models.MaterialApplication]:
-    return db.query(models.MaterialApplication).filter(models.MaterialApplication.id == app_id).first()
-
-
-def get_applications(
+def get_data_standards(
     db: Session,
-    status: Optional[str] = None,
-    created_by: Optional[str] = None,
+    entity_type: Optional[str] = None,
+    sap_table: Optional[str] = None,
     skip: int = 0,
-    limit: int = 100
-) -> List[models.MaterialApplication]:
-    query = db.query(models.MaterialApplication)
-    if status:
-        query = query.filter(models.MaterialApplication.status == status)
-    if created_by:
-        query = query.filter(models.MaterialApplication.created_by == created_by)
-    return query.order_by(desc(models.MaterialApplication.created_at)).offset(skip).limit(limit).all()
+    limit: int = 50,
+) -> Tuple[List[models.DataStandard], int]:
+    query = db.query(models.DataStandard)
+    if entity_type:
+        query = query.filter(models.DataStandard.entity_type == entity_type)
+    if sap_table:
+        query = query.filter(models.DataStandard.sap_table == sap_table)
+    total = query.count()
+    items = (
+        query.order_by(
+            models.DataStandard.entity_type,
+            models.DataStandard.sap_table,
+            models.DataStandard.field_name,
+        )
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
+    return items, total
 
 
-def update_application(db: Session, app_id: str, data: dict) -> Optional[models.MaterialApplication]:
-    db_item = get_application(db, app_id)
-    if not db_item:
-        return None
+def get_data_standard(db: Session, standard_id: str) -> Optional[models.DataStandard]:
+    return db.query(models.DataStandard).filter(models.DataStandard.id == standard_id).first()
+
+
+def find_data_standard_conflict(db: Session, entity_type: str, sap_table: Optional[str], field_name: str) -> Optional[models.DataStandard]:
+    query = db.query(models.DataStandard).filter(
+        models.DataStandard.entity_type == entity_type,
+        models.DataStandard.field_name == field_name,
+    )
+    if sap_table:
+        query = query.filter(models.DataStandard.sap_table == sap_table)
+    else:
+        query = query.filter(models.DataStandard.sap_table.is_(None))
+    return query.first()
+
+
+def create_data_standard(db: Session, data: dict) -> models.DataStandard:
+    item = models.DataStandard(**data)
+    db.add(item)
+    db.commit()
+    db.refresh(item)
+    return item
+
+
+def update_data_standard(db: Session, standard: models.DataStandard, data: dict) -> models.DataStandard:
     for key, value in data.items():
-        setattr(db_item, key, value)
-    db_item.updated_at = datetime.now(timezone.utc)
+        setattr(standard, key, value)
     db.commit()
-    db.refresh(db_item)
-    return db_item
+    db.refresh(standard)
+    return standard
 
 
-# ========== Code Rule ==========
+def count_rules_referencing_standard(db: Session, standard_id: str) -> int:
+    return (
+        db.query(models.QualityCheckRule)
+        .filter(models.QualityCheckRule.standard_id == standard_id)
+        .count()
+    )
 
-def create_code_rule(db: Session, data: schemas.CodeRuleCreate) -> models.CodeRule:
-    db_item = models.CodeRule(**data.model_dump())
-    db.add(db_item)
+
+def delete_data_standard(db: Session, standard: models.DataStandard) -> None:
+    db.delete(standard)
     db.commit()
-    db.refresh(db_item)
-    return db_item
 
 
-def get_code_rules(db: Session, classification_id: Optional[str] = None) -> List[models.CodeRule]:
-    query = db.query(models.CodeRule).filter(models.CodeRule.is_active == True)
-    if classification_id:
-        query = query.filter(models.CodeRule.classification_id == classification_id)
-    return query.all()
+# ========== Quality Checks ==========
+
+def get_quality_check_rules(
+    db: Session,
+    entity_type: Optional[str] = None,
+    rule_ids: Optional[List[str]] = None,
+    skip: int = 0,
+    limit: int = 50,
+) -> Tuple[List[models.QualityCheckRule], int]:
+    """List rules. rule_ids 为空 = 全部启用规则；指定 ids 不过滤 is_active（未启用由引擎记为不可执行）。"""
+    query = db.query(models.QualityCheckRule)
+    if entity_type:
+        query = query.filter(models.QualityCheckRule.entity_type == entity_type)
+    if rule_ids:
+        query = query.filter(models.QualityCheckRule.id.in_(rule_ids))
+    else:
+        query = query.filter(models.QualityCheckRule.is_active.is_(True))
+    total = query.count()
+    items = (
+        query.order_by(
+            models.QualityCheckRule.entity_type,
+            models.QualityCheckRule.field_name,
+            models.QualityCheckRule.rule_type,
+        )
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
+    return items, total
 
 
-def get_code_rule(db: Session, rule_id: str) -> Optional[models.CodeRule]:
-    return db.query(models.CodeRule).filter(models.CodeRule.id == rule_id).first()
+def get_quality_check_rules_by_ids(db: Session, rule_ids: List[str]) -> List[models.QualityCheckRule]:
+    if not rule_ids:
+        return []
+    return (
+        db.query(models.QualityCheckRule)
+        .filter(models.QualityCheckRule.id.in_(rule_ids))
+        .all()
+    )
 
 
-def increment_seq(db: Session, rule_id: str) -> int:
-    """Atomically increment and return the sequence number.
-    
-    Uses database-level UPDATE to avoid race conditions in concurrent requests.
+def count_material_records(db: Session, entity_ids: Optional[List[str]] = None) -> int:
+    query = db.query(models.MaterialRecord)
+    if entity_ids:
+        query = query.filter(models.MaterialRecord.id.in_(entity_ids))
+    return query.count()
+
+
+def count_partner_records(db: Session, entity_type: str, entity_ids: Optional[List[str]] = None) -> int:
+    query = db.query(models.PartnerRecord).filter(
+        models.PartnerRecord.entity_type == entity_type
+    )
+    if entity_ids:
+        query = query.filter(models.PartnerRecord.id.in_(entity_ids))
+    return query.count()
+
+
+def get_quality_check_results(
+    db: Session,
+    entity_type: str,
+    entity_id: Optional[str] = None,
+    severity: Optional[str] = None,
+    batch_id: Optional[str] = None,
+    field_name: Optional[str] = None,
+    skip: int = 0,
+    limit: int = 50,
+) -> Tuple[List[models.QualityCheckResult], int]:
+    query = db.query(models.QualityCheckResult).filter(
+        models.QualityCheckResult.entity_type == entity_type
+    )
+    if entity_id:
+        query = query.filter(models.QualityCheckResult.entity_id == entity_id)
+    if severity:
+        query = query.filter(models.QualityCheckResult.severity == severity)
+    if batch_id:
+        query = query.filter(models.QualityCheckResult.batch_id == batch_id)
+    if field_name:
+        query = query.filter(models.QualityCheckResult.field_name == field_name)
+    total = query.count()
+    items = (
+        query.order_by(
+            models.QualityCheckResult.checked_at.desc(),
+            models.QualityCheckResult.id,
+        )
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
+    return items, total
+
+
+def get_quality_check_batches(
+    db: Session,
+    entity_type: str,
+    skip: int = 0,
+    limit: int = 50,
+) -> Tuple[List[models.QualityCheckBatch], int]:
+    query = db.query(models.QualityCheckBatch).filter(
+        models.QualityCheckBatch.entity_type == entity_type
+    )
+    total = query.count()
+    items = (
+        query.order_by(
+            models.QualityCheckBatch.started_at.desc(),
+            models.QualityCheckBatch.id,
+        )
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
+    return items, total
+
+
+def get_quality_check_batch(db: Session, batch_id: str) -> Optional[models.QualityCheckBatch]:
+    return (
+        db.query(models.QualityCheckBatch)
+        .filter(models.QualityCheckBatch.id == batch_id)
+        .first()
+    )
+
+
+def get_latest_quality_check_batch(db: Session, entity_type: str) -> Optional[models.QualityCheckBatch]:
+    return (
+        db.query(models.QualityCheckBatch)
+        .filter(models.QualityCheckBatch.entity_type == entity_type)
+        .order_by(
+            models.QualityCheckBatch.started_at.desc(),
+            models.QualityCheckBatch.id.desc(),
+        )
+        .first()
+    )
+
+
+def count_failed_results_by_field(db: Session, batch_id: str) -> Dict[str, int]:
+    """按字段名批量统计某检测批次中的失败数（字段治理状态装配用，一次 GROUP BY）。"""
+    rows = (
+        db.query(models.QualityCheckResult.field_name, func.count())
+        .filter(
+            models.QualityCheckResult.batch_id == batch_id,
+            models.QualityCheckResult.field_name.isnot(None),
+        )
+        .group_by(models.QualityCheckResult.field_name)
+        .all()
+    )
+    return {row[0]: row[1] for row in rows}
+
+
+# ========== Stock Records ==========
+
+def get_material_records(db: Session, entity_ids: Optional[List[str]] = None, limit: int = 5_000) -> List[models.MaterialRecord]:
+    query = db.query(models.MaterialRecord)
+    if entity_ids:
+        query = query.filter(models.MaterialRecord.id.in_(entity_ids))
+    return query.limit(limit).all()
+
+
+def get_partner_records(db: Session, entity_type: Optional[str] = None, entity_ids: Optional[List[str]] = None, limit: int = 5_000) -> List[models.PartnerRecord]:
+    query = db.query(models.PartnerRecord)
+    if entity_type:
+        query = query.filter(models.PartnerRecord.entity_type == entity_type)
+    if entity_ids:
+        query = query.filter(models.PartnerRecord.id.in_(entity_ids))
+    return query.limit(limit).all()
+
+
+def get_material_record(db: Session, record_id: str) -> Optional[models.MaterialRecord]:
+    """按主键取单条物料记录（存量纠正端点定位用）。"""
+    return (
+        db.query(models.MaterialRecord)
+        .filter(models.MaterialRecord.id == record_id)
+        .first()
+    )
+
+
+def get_partner_record(db: Session, entity_type: str, record_id: str) -> Optional[models.PartnerRecord]:
+    """按主键 + 实体类型取单条伙伴记录（存量纠正端点定位用，隔离 supplier/customer）。"""
+    return (
+        db.query(models.PartnerRecord)
+        .filter(
+            models.PartnerRecord.entity_type == entity_type,
+            models.PartnerRecord.id == record_id,
+        )
+        .first()
+    )
+
+
+def get_data_standard_for_field(
+    db: Session, entity_type: str, field_name: str
+) -> Optional[models.DataStandard]:
+    """按实体 + 字段名（大小写不敏感）取数据标准，供存量纠正护栏校验。
+
+    返回行的 field_name 即规范化名（防 SMVendorID 等 camelCase 被 upper() 破坏）。
     """
-    # Atomic increment using raw SQL
-    db.execute(
-        text("UPDATE code_rules SET current_seq = current_seq + 1 WHERE id = :id"),
-        {"id": rule_id}
+    return (
+        db.query(models.DataStandard)
+        .filter(
+            models.DataStandard.entity_type == entity_type,
+            models.DataStandard.field_name.ilike(field_name.strip()),
+        )
+        .order_by(models.DataStandard.field_name)
+        .first()
     )
-    db.commit()
-    
-    # Fetch the updated value
-    result = db.execute(
-        text("SELECT current_seq FROM code_rules WHERE id = :id"),
-        {"id": rule_id}
+
+
+# ========== Suspected Errors (SPEC §3.3) ==========
+
+def get_suspected_error(db: Session, error_id: str) -> Optional[models.SuspectedError]:
+    return (
+        db.query(models.SuspectedError)
+        .filter(models.SuspectedError.id == error_id)
+        .first()
     )
-    row = result.fetchone()
-    return row[0] if row else 0
 
 
-# ========== Golden Record ==========
-
-def create_golden_record(db: Session, data: schemas.GoldenRecordBase, application_id: str, user_id: str) -> models.GoldenRecord:
-    db_item = models.GoldenRecord(
-        application_id=application_id,
-        created_by=user_id,
-        **data.model_dump()
+def list_suspected_errors(
+    db: Session,
+    entity_type: str,
+    error_type: Optional[str] = None,
+    status: Optional[str] = None,
+    skip: int = 0,
+    limit: int = 50,
+) -> Tuple[List[models.SuspectedError], int]:
+    query = db.query(models.SuspectedError).filter(
+        models.SuspectedError.entity_type == entity_type
     )
-    db.add(db_item)
-    db.commit()
-    db.refresh(db_item)
-    return db_item
+    if error_type:
+        query = query.filter(models.SuspectedError.error_type == error_type)
+    if status:
+        query = query.filter(models.SuspectedError.status == status)
+    total = query.count()
+    items = (
+        query.order_by(models.SuspectedError.detected_at.desc(), models.SuspectedError.id)
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
+    return items, total
 
 
-def get_golden_record(db: Session, gr_id: str) -> Optional[models.GoldenRecord]:
-    return db.query(models.GoldenRecord).filter(models.GoldenRecord.id == gr_id).first()
+def get_suspected_errors_by_entity_type(db: Session, entity_type: str) -> List[models.SuspectedError]:
+    """一次预载该实体类型全部疑似错误行（§2.7 重检去重三键映射用）。"""
+    return (
+        db.query(models.SuspectedError)
+        .filter(models.SuspectedError.entity_type == entity_type)
+        .all()
+    )
 
 
-def get_golden_record_by_code(db: Session, code: str) -> Optional[models.GoldenRecord]:
-    return db.query(models.GoldenRecord).filter(models.GoldenRecord.material_code == code).first()
+def existing_entity_ids(db: Session, entity_type: str, entity_ids: List[str]) -> set:
+    """传入 id 集合中仍存在且 active 的记录 id（自动关闭判定用，一次查询）。"""
+    ids = [str(i) for i in entity_ids if str(i)]
+    if not ids:
+        return set()
+    if entity_type == "material":
+        rows = (
+            db.query(models.MaterialRecord.id)
+            .filter(
+                models.MaterialRecord.id.in_(ids),
+                models.MaterialRecord.status == "active",
+            )
+            .all()
+        )
+    elif entity_type in ("supplier", "customer"):
+        rows = (
+            db.query(models.PartnerRecord.id)
+            .filter(
+                models.PartnerRecord.entity_type == entity_type,
+                models.PartnerRecord.id.in_(ids),
+                models.PartnerRecord.status == "active",
+            )
+            .all()
+        )
+    else:
+        return set()
+    return {row[0] for row in rows}
 
 
-def get_golden_records(db: Session, skip: int = 0, limit: int = 100) -> List[models.GoldenRecord]:
-    return db.query(models.GoldenRecord).order_by(desc(models.GoldenRecord.created_at)).offset(skip).limit(limit).all()
+# ========== Data Import (SPEC Phase 4.1) ==========
+
+def map_partner_records_by_code(
+    db: Session, entity_type: str, codes: List[str]
+) -> Dict[str, models.PartnerRecord]:
+    """按 partner_code 批量取存量记录，供导入 upsert 一次查询定位（键为 partner_code）。"""
+    unique_codes = {str(c) for c in codes if str(c)}
+    if not unique_codes:
+        return {}
+    rows = (
+        db.query(models.PartnerRecord)
+        .filter(
+            models.PartnerRecord.entity_type == entity_type,
+            models.PartnerRecord.partner_code.in_(unique_codes),
+        )
+        .all()
+    )
+    return {row.partner_code: row for row in rows}
 
 
-def update_golden_record(db: Session, gr_id: str, data: dict) -> Optional[models.GoldenRecord]:
-    db_item = get_golden_record(db, gr_id)
-    if not db_item:
-        return None
-    for key, value in data.items():
-        setattr(db_item, key, value)
-    db_item.updated_at = datetime.now(timezone.utc)
-    db.commit()
-    db.refresh(db_item)
-    return db_item
-
-
-# ========== Audit Log ==========
+# ========== Audit Logs ==========
 
 def create_audit_log(db: Session, **kwargs) -> models.AuditLog:
     db_item = models.AuditLog(**kwargs)
@@ -200,51 +387,198 @@ def create_audit_log(db: Session, **kwargs) -> models.AuditLog:
     return db_item
 
 
-def get_audit_logs(db: Session, application_id: Optional[str] = None, skip: int = 0, limit: int = 100) -> List[models.AuditLog]:
-    query = db.query(models.AuditLog)
-    if application_id:
-        query = query.filter(models.AuditLog.application_id == application_id)
-    return query.order_by(desc(models.AuditLog.executed_at)).offset(skip).limit(limit).all()
+def get_audit_logs(db: Session, skip: int = 0, limit: int = 100) -> List[models.AuditLog]:
+    return (
+        db.query(models.AuditLog)
+        .order_by(models.AuditLog.executed_at.desc())
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
 
 
-def get_application_audit_logs(db: Session, application_id: str) -> List[models.AuditLog]:
-    return db.query(models.AuditLog).filter(
-        models.AuditLog.application_id == application_id
-    ).order_by(models.AuditLog.executed_at).all()
+# ========== Metadata ==========
+
+def get_metadata_fields(
+    db: Session,
+    entity_type: Optional[str] = None,
+    view_section: Optional[str] = None,
+    must_govern: Optional[bool] = None,
+    keyword: Optional[str] = None,
+    skip: int = 0,
+    limit: int = 50,
+) -> Tuple[List[models.MetadataField], int]:
+    query = db.query(models.MetadataField)
+    if entity_type:
+        query = query.filter(models.MetadataField.entity_type == entity_type)
+    if view_section:
+        query = query.filter(models.MetadataField.view_section == view_section)
+    if must_govern is not None:
+        query = query.filter(models.MetadataField.must_govern.is_(must_govern))
+    if keyword:
+        like = f"%{keyword}%"
+        query = query.filter(or_(
+            models.MetadataField.field_name.ilike(like),
+            models.MetadataField.field_label.ilike(like),
+        ))
+    total = query.count()
+    items = (
+        query.order_by(
+            models.MetadataField.entity_type,
+            models.MetadataField.sap_table,
+            models.MetadataField.field_name,
+        )
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
+    return items, total
 
 
-# ========== External System Log ==========
+def get_metadata_field(db: Session, field_id: str) -> Optional[models.MetadataField]:
+    return db.query(models.MetadataField).filter(models.MetadataField.id == field_id).first()
 
-def create_external_log(db: Session, **kwargs) -> models.ExternalSystemLog:
-    db_item = models.ExternalSystemLog(**kwargs)
-    db.add(db_item)
+
+def get_metadata_fields_by_ids(db: Session, field_ids: List[str]) -> List[models.MetadataField]:
+    """按 id 集合批量取元数据字段（数据标准响应装配用，一次查询避免 N+1）。"""
+    if not field_ids:
+        return []
+    return (
+        db.query(models.MetadataField)
+        .filter(models.MetadataField.id.in_(field_ids))
+        .all()
+    )
+
+
+def find_metadata_field_conflict(db: Session, entity_type: str, sap_table: Optional[str], field_name: str) -> Optional[models.MetadataField]:
+    query = db.query(models.MetadataField).filter(
+        models.MetadataField.entity_type == entity_type,
+        models.MetadataField.field_name == field_name,
+    )
+    if sap_table:
+        query = query.filter(models.MetadataField.sap_table == sap_table)
+    else:
+        query = query.filter(models.MetadataField.sap_table.is_(None))
+    return query.first()
+
+
+def create_metadata_field(db: Session, data: dict) -> models.MetadataField:
+    item = models.MetadataField(**data)
+    db.add(item)
     db.commit()
-    db.refresh(db_item)
-    return db_item
+    db.refresh(item)
+    return item
 
 
-# ========== Dashboard Stats ==========
+def update_metadata_field(db: Session, field: models.MetadataField, data: dict) -> models.MetadataField:
+    for key, value in data.items():
+        setattr(field, key, value)
+    db.commit()
+    db.refresh(field)
+    return field
 
-def get_dashboard_stats(db: Session) -> dict:
-    return {
-        "total_applications": db.query(models.MaterialApplication).count(),
-        "pending_admin": db.query(models.MaterialApplication).filter(
-            models.MaterialApplication.status == models.ApplicationStatus.PENDING_ADMIN
-        ).count(),
-        "pending_dept": db.query(models.MaterialApplication).filter(
-            models.MaterialApplication.status == models.ApplicationStatus.PENDING_DEPT
-        ).count(),
-        "approved": db.query(models.MaterialApplication).filter(
-            models.MaterialApplication.status == models.ApplicationStatus.APPROVED
-        ).count(),
-        "rejected": db.query(models.MaterialApplication).filter(
-            models.MaterialApplication.status == models.ApplicationStatus.REJECTED
-        ).count(),
-        "published": db.query(models.MaterialApplication).filter(
-            models.MaterialApplication.status == models.ApplicationStatus.PUBLISHED
-        ).count(),
-        "total_golden_records": db.query(models.GoldenRecord).count(),
-        "total_classifications": db.query(models.MaterialClassification).filter(
-            models.MaterialClassification.is_active == True
-        ).count(),
-    }
+
+def get_metadata_entities(db: Session) -> List[models.MetadataEntity]:
+    return (
+        db.query(models.MetadataEntity)
+        .order_by(models.MetadataEntity.entity_type)
+        .all()
+    )
+
+
+def get_metadata_entity(db: Session, entity_type: str) -> Optional[models.MetadataEntity]:
+    return (
+        db.query(models.MetadataEntity)
+        .filter(models.MetadataEntity.entity_type == entity_type)
+        .first()
+    )
+
+
+def update_metadata_entity(db: Session, entity: models.MetadataEntity, data: dict) -> models.MetadataEntity:
+    for key, value in data.items():
+        setattr(entity, key, value)
+    db.commit()
+    db.refresh(entity)
+    return entity
+
+
+def get_glossary_terms(db: Session) -> List[models.GlossaryTerm]:
+    return (
+        db.query(models.GlossaryTerm)
+        .order_by(models.GlossaryTerm.term)
+        .all()
+    )
+
+
+def create_glossary_term(db: Session, data: dict) -> models.GlossaryTerm:
+    item = models.GlossaryTerm(**data)
+    db.add(item)
+    db.commit()
+    db.refresh(item)
+    return item
+
+
+def update_glossary_term(db: Session, term: models.GlossaryTerm, data: dict) -> models.GlossaryTerm:
+    for key, value in data.items():
+        setattr(term, key, value)
+    db.commit()
+    db.refresh(term)
+    return term
+
+
+def count_standards_by_field_ids(db: Session, field_ids: List[str]) -> Dict[str, int]:
+    """按元数据字段 id 批量统计引用它的数据标准数（一次 GROUP BY，避免列表端点 N+1）。"""
+    if not field_ids:
+        return {}
+    rows = (
+        db.query(models.DataStandard.metadata_field_id, func.count())
+        .filter(models.DataStandard.metadata_field_id.in_(field_ids))
+        .group_by(models.DataStandard.metadata_field_id)
+        .all()
+    )
+    return {row[0]: row[1] for row in rows}
+
+
+def count_rules_by_field_ids(db: Session, field_ids: List[str]) -> Dict[str, int]:
+    """按元数据字段 id 批量统计经标准关联的质量规则数（字段治理状态装配用）。
+
+    链：QualityCheckRule.standard_id → DataStandard.metadata_field_id，一次 JOIN + GROUP BY。
+    """
+    if not field_ids:
+        return {}
+    rows = (
+        db.query(models.DataStandard.metadata_field_id, func.count(models.QualityCheckRule.id))
+        .join(
+            models.QualityCheckRule,
+            models.QualityCheckRule.standard_id == models.DataStandard.id,
+        )
+        .filter(models.DataStandard.metadata_field_id.in_(field_ids))
+        .group_by(models.DataStandard.metadata_field_id)
+        .all()
+    )
+    return {row[0]: row[1] for row in rows}
+
+
+def get_glossary_terms_by_ids(db: Session, term_ids: List[str]) -> Dict[str, models.GlossaryTerm]:
+    """按 id 集合批量取业务术语并建 id → 术语映射（字段登记册装配用，一次 IN 查询）。"""
+    if not term_ids:
+        return {}
+    rows = (
+        db.query(models.GlossaryTerm)
+        .filter(models.GlossaryTerm.id.in_(term_ids))
+        .all()
+    )
+    return {row.id: row for row in rows}
+
+
+def count_fields_by_glossary_term_ids(db: Session, term_ids: List[str]) -> Dict[str, int]:
+    """按术语 id 批量统计关联的元数据字段数（glossary 列表与写响应共用口径，一次 GROUP BY）。"""
+    if not term_ids:
+        return {}
+    rows = (
+        db.query(models.MetadataField.glossary_term_id, func.count())
+        .filter(models.MetadataField.glossary_term_id.in_(term_ids))
+        .group_by(models.MetadataField.glossary_term_id)
+        .all()
+    )
+    return {row[0]: row[1] for row in rows}

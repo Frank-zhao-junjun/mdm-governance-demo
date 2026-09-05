@@ -10,7 +10,15 @@ from passlib.context import CryptContext
 from app.core.config import settings
 
 # JWT configuration
-SECRET_KEY = settings.OM_TOKEN[:32] if settings.OM_TOKEN else "ralphloop-mdm-secret-key-2026"
+# Production (ENV=production) must provide MDM_SECRET_KEY; other environments
+# (development/test/CI) fall back to a fixed local-only key.
+SECRET_KEY = settings.SECRET_KEY
+if not SECRET_KEY:
+    if settings.ENV == "production":
+        raise RuntimeError(
+            "MDM_SECRET_KEY environment variable must be set in production"
+        )
+    SECRET_KEY = "dev-only-insecure-mdm-key-not-for-production"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 480  # 8 hours
 
@@ -88,15 +96,6 @@ def get_current_user(
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)
 ) -> dict:
     """Extract and validate current user from JWT token."""
-    # Development fallback: if no token, use mock user
-    if settings.DEBUG and not credentials:
-        return {
-            "id": "user001",
-            "name": "张三",
-            "department": "研发部",
-            "role": "applicant",
-        }
-    
     if not credentials:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
