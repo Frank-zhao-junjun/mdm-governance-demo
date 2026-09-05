@@ -1,8 +1,10 @@
 """存量数据导入 API（SPEC §7 Phase 4.1）。
 
 上游业务系统负责创建与分发（SPEC §1.4），本系统只接收存量数据，因此
-导入端点是 partner_records 的唯一写入口。写权限限 data_admin / admin
-（SPEC §3.0 权限矩阵），执行以 StepName.DATA_IMPORT 审计。
+导入端点是 partner_records 的批量写入口（存量纠正期新增行级修正端点
+POST /api/records/{entity_type}/{record_id}/fix，属字段级治理写口，见
+record_fixer；两者均为 data_admin / admin 权限）。写权限限 data_admin /
+admin（SPEC §3.0 权限矩阵），执行以 StepName.DATA_IMPORT 审计。
 
 沿用 quality_checks / suspected_errors 的两段提交模式：importer 提交
 数据，API 层写审计。

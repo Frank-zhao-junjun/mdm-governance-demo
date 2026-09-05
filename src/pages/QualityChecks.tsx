@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { Play, RefreshCw } from 'lucide-react';
+import { Play, RefreshCw, Wrench } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { Badge } from '@/components/ui/badge';
@@ -13,7 +13,16 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
   Select,
@@ -55,6 +64,8 @@ import type {
   QualityCheckRuleListResponse,
   QualityRunPayload,
   QualityRunResponse,
+  RecordFieldFixPayload,
+  RecordFieldFixResult,
 } from '@/types/api';
 
 /** Radix Select 不允许 value=""，过滤项用哨兵表示「不限」 */
@@ -88,9 +99,17 @@ const QualityChecks: React.FC = () => {
   const [runError, setRunError] = useState<string | null>(null);
   const [lastRun, setLastRun] = useState<QualityRunResponse | null>(null);
 
-  // 结果卡：批次 / 严重程度筛选 + skip / limit 分页
+  // 结果卡：批次 / 字段 / 严重程度筛选 + skip / limit 分页
+  // URL 深链（来自元数据治理状态 Badge）：?entity_type=&field_name=&batch_id= 一次生效
   const [batches, setBatches] = useState<QualityCheckBatch[]>([]);
-  const [batchFilter, setBatchFilter] = useState<string>(ALL);
+  const [batchFilter, setBatchFilter] = useState<string>(() => {
+    const batchId = searchParams.get('batch_id');
+    return batchId && batchId.length > 0 ? batchId : ALL;
+  });
+  const [fieldFilter, setFieldFilter] = useState<string>(() => {
+    const fieldName = searchParams.get('field_name');
+    return fieldName && fieldName.length > 0 ? fieldName : ALL;
+  });
   const [severityFilter, setSeverityFilter] = useState<CheckSeverity | typeof ALL>(ALL);
   const [limit, setLimit] = useState<number>(DEFAULT_LIMIT);
   const [skip, setSkip] = useState<number>(0);
@@ -137,8 +156,9 @@ const QualityChecks: React.FC = () => {
     setSelectedRuleIds(new Set());
     setLastRun(null);
     setRunError(null);
-    // 结果列表回到「全部批次」首页
+    // 结果列表回到「全部批次 / 全部字段」首页
     setBatchFilter(ALL);
+    setFieldFilter(ALL);
     setSeverityFilter(ALL);
     setSkip(0);
   };
@@ -179,11 +199,12 @@ const QualityChecks: React.FC = () => {
     const params = new URLSearchParams();
     params.set('entity_type', entityType);
     if (batchFilter !== ALL) params.set('batch_id', batchFilter);
+    if (fieldFilter !== ALL) params.set('field_name', fieldFilter);
     if (severityFilter !== ALL) params.set('severity', severityFilter);
     params.set('skip', String(skip));
     params.set('limit', String(limit));
     return params.toString();
-  }, [entityType, batchFilter, severityFilter, skip, limit]);
+  }, [entityType, batchFilter, fieldFilter, severityFilter, skip, limit]);
 
   const loadResults = useCallback(
     () =>
@@ -228,6 +249,34 @@ const QualityChecks: React.FC = () => {
   }, [applyError, applyResult, loadResults]);
 
   const ruleById = useMemo(() => new Map(rules.map((r) => [r.id, r])), [rules]);
+
+  // ===== 字段治理闭环：字段筛选（选项=当前实体规则字段去重）+ 行内修正 =====
+
+  /** 字段筛选下拉选项：当前实体规则中出现的字段名（去重排序） */
+  const fieldOptions = useMemo(() => {
+    const names = new Set<string>();
+    rules.forEach((rule) => {
+      if (rule.field_name) names.add(rule.field_name);
+    });
+    return Array.from(names).sort();
+  }, [rules]);
+
+  /** 有 null_check 规则的字段 = 必填字段，不允许「清空该键」 */
+  const requiredFields = useMemo(
+    () =>
+      new Set(
+        rules
+          .filter((rule) => rule.rule_type === 'null_check' && rule.field_name)
+          .map((rule) => rule.field_name as string),
+      ),
+    [rules],
+  );
+
+  /** 行内修正弹窗目标（null = 关闭） */
+  const [fixTarget, setFixTarget] = useState<{
+    item: QualityCheckResult;
+    rule: QualityCheckRule | undefined;
+  } | null>(null);
 
   // ===== 执行 =====
 
@@ -484,6 +533,30 @@ const QualityChecks: React.FC = () => {
             </div>
 
             <div className="flex items-center gap-2">
+              <Label className="text-xs text-gray-500">字段</Label>
+              <Select
+                value={fieldFilter}
+                onValueChange={(value) => {
+                  setLoading(true);
+                  setFieldFilter(value);
+                  setSkip(0);
+                }}
+              >
+                <SelectTrigger size="sm" className="w-36">
+                  <SelectValue placeholder="全部字段" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={ALL}>全部字段</SelectItem>
+                  {fieldOptions.map((name) => (
+                    <SelectItem key={name} value={name}>
+                      {name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex items-center gap-2">
               <Label className="text-xs text-gray-500">每页</Label>
               <Select
                 value={String(limit)}
@@ -531,12 +604,18 @@ const QualityChecks: React.FC = () => {
               <Empty>
                 <EmptyHeader>
                   <EmptyTitle>
-                    {batchFilter !== ALL ? '该批次无失败明细' : '暂无检测结果'}
+                    {fieldFilter !== ALL
+                      ? '该字段已无失败记录'
+                      : batchFilter !== ALL
+                        ? '该批次无失败明细'
+                        : '暂无检测结果'}
                   </EmptyTitle>
                   <EmptyDescription>
-                    {writable
-                      ? '在上方选择实体与规则后执行检测；通过项与跳过项不在此列。'
-                      : '等待数据管理员执行检测后，失败明细会出现在这里。'}
+                    {fieldFilter !== ALL
+                      ? '所选范围内该字段已达标；若刚完成修正，重跑检测可验证闭环。'
+                      : writable
+                        ? '在上方选择实体与规则后执行检测；通过项与跳过项不在此列。'
+                        : '等待数据管理员执行检测后，失败明细会出现在这里。'}
                   </EmptyDescription>
                 </EmptyHeader>
               </Empty>
@@ -553,6 +632,7 @@ const QualityChecks: React.FC = () => {
                     <TableHead>字段值</TableHead>
                     <TableHead>问题描述</TableHead>
                     <TableHead>检测时间</TableHead>
+                    <TableHead className="w-20">操作</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -582,6 +662,24 @@ const QualityChecks: React.FC = () => {
                         <TableCell className="max-w-72 text-sm">{item.message ?? '—'}</TableCell>
                         <TableCell className="whitespace-nowrap text-xs text-gray-500">
                           {formatTimestamp(item.checked_at)}
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap">
+                          {item.field_name ? (
+                            writable ? (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setFixTarget({ item, rule })}
+                              >
+                                <Wrench className="size-3.5" />
+                                修正
+                              </Button>
+                            ) : (
+                              <span className="text-xs text-gray-300">—</span>
+                            )
+                          ) : (
+                            <span className="text-xs text-gray-300">—</span>
+                          )}
                         </TableCell>
                       </TableRow>
                     );
@@ -623,7 +721,156 @@ const QualityChecks: React.FC = () => {
           </div>
         </CardContent>
       </Card>
+
+      {/* 行内修正弹窗：POST /api/records/{entity_type}/{record_id}/fix（require_admin 已含在 writable） */}
+      {/* key 绑 target：切换修正对象时整弹窗重挂，表单自然重置（不依赖 effect setState） */}
+      <FixFieldDialog
+        key={fixTarget ? `${fixTarget.item.entity_id}:${fixTarget.item.field_name}` : 'closed'}
+        target={fixTarget}
+        canClear={fixTarget !== null && !requiredFields.has(fixTarget.item.field_name ?? '')}
+        onOpenChange={(open) => {
+          if (!open) setFixTarget(null);
+        }}
+      />
     </div>
+  );
+};
+
+// ===== FixFieldDialog：修正存量记录的单个治理字段 =====
+
+interface FixTarget {
+  item: QualityCheckResult;
+  rule: QualityCheckRule | undefined;
+}
+
+interface FixFieldDialogProps {
+  target: FixTarget | null;
+  /** 该字段无必填（null_check）规则时允许「清空该键」 */
+  canClear: boolean;
+  onOpenChange: (open: boolean) => void;
+}
+
+const FixFieldDialog: React.FC<FixFieldDialogProps> = ({ target, canClear, onOpenChange }) => {
+  const [value, setValue] = useState('');
+  const [clearing, setClearing] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [serverError, setServerError] = useState<string | null>(null);
+
+  const submitFix = async () => {
+    if (!target) return;
+    if (!clearing && !value.trim()) {
+      setServerError('请输入修正值，或勾选「清空该字段值」');
+      return;
+    }
+    setSubmitting(true);
+    setServerError(null);
+    try {
+      const payload: RecordFieldFixPayload = clearing
+        ? { field_name: target.item.field_name ?? '' }
+        : { field_name: target.item.field_name ?? '', value: value.trim() };
+      const res = await api<RecordFieldFixResult>(
+        `/api/records/${target.item.entity_type}/${target.item.entity_id}/fix`,
+        { method: 'POST', body: JSON.stringify(payload), silentError: true },
+      );
+      toast.success(
+        `「${res.field_name}」已修正（${String(res.old_value ?? '空')} → ${String(res.new_value ?? '空')}）。请重跑检测验证闭环。`,
+      );
+      onOpenChange(false);
+    } catch (err) {
+      setServerError(err instanceof Error ? err.message : '修正失败，请稍后重试');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (!target) return null;
+  const { item, rule } = target;
+
+  return (
+    <Dialog
+      open
+      onOpenChange={(open) => {
+        if (!open) onOpenChange(false);
+      }}
+    >
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>
+            修正字段「{item.field_name ?? '—'}」
+          </DialogTitle>
+          <DialogDescription>
+            {rule ? rule.name : '字段治理修正'}：写入本系统登记仓（冗余列或属性键），
+            需通过该字段的数据标准校验（格式 / 值域 / 长度 / 唯一性）。
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-3">
+          <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-600">
+            <div className="flex gap-2">
+              <span className="w-16 shrink-0 text-gray-400">实体 ID</span>
+              <span className="truncate font-mono">{item.entity_id}</span>
+            </div>
+            <div className="mt-1 flex gap-2">
+              <span className="w-16 shrink-0 text-gray-400">当前值</span>
+              <span className="truncate font-mono">{item.field_value ?? '（无）'}</span>
+            </div>
+            {item.message && (
+              <div className="mt-1 flex gap-2">
+                <span className="w-16 shrink-0 text-gray-400">问题</span>
+                <span className="truncate">{item.message}</span>
+              </div>
+            )}
+          </div>
+
+          {!clearing && (
+            <div className="space-y-1.5">
+              <Label className="text-xs text-gray-500">修正值</Label>
+              <Input
+                value={value}
+                onChange={(e) => setValue(e.target.value)}
+                placeholder={item.field_value ?? '输入符合数据标准的新值'}
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !submitting) void submitFix();
+                }}
+              />
+            </div>
+          )}
+
+          {canClear && (
+            <label className="flex cursor-pointer items-start gap-2 text-sm">
+              <Checkbox
+                checked={clearing}
+                onCheckedChange={(checked) => setClearing(checked === true)}
+              />
+              <span className="text-gray-600">
+                清空该字段值（仅非必填字段；从属性中移除该键，必填字段后端将拒绝）
+              </span>
+            </label>
+          )}
+
+          {!canClear && (
+            <p className="text-xs text-gray-400">该字段为必填字段，只能输入修正值，不能清空。</p>
+          )}
+
+          {serverError && (
+            <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+              {serverError}
+            </div>
+          )}
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={submitting}>
+            取消
+          </Button>
+          <Button onClick={() => void submitFix()} disabled={submitting}>
+            {submitting && <Spinner className="size-4" />}
+            确认修正
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 };
 

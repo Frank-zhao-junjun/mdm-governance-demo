@@ -80,17 +80,19 @@ def list_metadata_fields(
         skip=skip,
         limit=limit,
     )
-    # 批量装配关联术语名 / 引用标准数：两次查询建映射，避免逐行 count（N+1）
+    # 批量装配关联术语名 / 引用标准数 / 治理状态四元组：映射式查询避免逐行 count
     standard_counts = crud.count_standards_by_field_ids(db, [f.id for f in items])
     term_map = crud.get_glossary_terms_by_ids(
         db, [f.glossary_term_id for f in items if f.glossary_term_id]
     )
+    governance = metadata_service.enrich_field_governance(db, items)
     result = []
     for f in items:
         item = schemas.MetadataFieldResponse.model_validate(f).model_dump()
         term = term_map.get(f.glossary_term_id) if f.glossary_term_id else None
         item["glossary_term_name"] = term.term if term else None
         item["standard_count"] = standard_counts.get(f.id, 0)
+        item.update(governance.get(f.id, {}))
         result.append(item)
     return {"total": total, "items": result}
 
@@ -153,7 +155,10 @@ def update_metadata_field(
             "fields": sorted(changes.keys()),
         },
     )
-    return field
+    # 写响应与列表端点同一治理状态口径（编辑保存后回显最新批次/失败数）
+    item = schemas.MetadataFieldResponse.model_validate(field).model_dump()
+    item.update(metadata_service.enrich_field_governance(db, [field]).get(field.id, {}))
+    return item
 
 
 def _to_glossary_response(db: Session, term: models.GlossaryTerm) -> dict:

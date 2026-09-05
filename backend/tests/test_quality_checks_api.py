@@ -295,6 +295,15 @@ def test_results_filters_and_pagination(quality_db, data_client):
     assert body["total"] == 2  # M1234 两条失败（格式 + 缺 MEINS）
     assert all(item["entity_id"] == m1234_id for item in body["items"])
 
+    # field_name 过滤（字段治理单字段视图数据源）
+    for field in ("MATNR", "MEINS"):
+        resp = data_client.get(
+            "/api/quality-checks/results",
+            params={"entity_type": "material", "batch_id": batch.id, "field_name": field, "limit": 100},
+        )
+        items = resp.json()["items"]
+        assert items and all(item["field_name"] == field for item in items)
+
     # 分页：limit=1 切片正确、total 恒定
     page1 = data_client.get(
         "/api/quality-checks/results",

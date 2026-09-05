@@ -7,6 +7,7 @@
  * （{open && <Form ...>} 条件挂载重置，ApiError 400/404/409 就地展示）。
  */
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Pencil, Plus, RefreshCw, Search } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -794,6 +795,45 @@ const FieldFormDialog: React.FC<FieldFormDialogProps> = (props) => {
   );
 };
 
+/** 字段治理状态四态 Badge（与后端 enrich_field_governance 口径一致）：
+ * 规则 0 → 灰「未纳入治理」；无批次 → 蓝「未检测」；失败 0 → 绿「已达标」；
+ * 失败 n → 红「n 待修复」（Link 深链到检测页，预选实体/字段/最新批次）。
+ * 跳转按数据标准管理（/quality/standards）与检测页（/quality/checks）现有 URL 语义，
+ * 本页保持 state-based 导航不加 URL。 */
+function GovernanceStatusBadge({ item }: { item: MetadataField }) {
+  if (item.quality_rule_count === 0) {
+    return (
+      <Badge variant="outline" className="font-normal text-gray-400">
+        未纳入治理
+      </Badge>
+    );
+  }
+  if (item.latest_batch_id === null) {
+    return (
+      <Badge className="border border-blue-200 bg-blue-100 font-normal text-blue-700">
+        未检测
+      </Badge>
+    );
+  }
+  if (item.latest_batch_failed === 0) {
+    return (
+      <Badge className="border border-green-200 bg-green-100 font-normal text-green-700">
+        已达标
+      </Badge>
+    );
+  }
+  return (
+    <Link
+      to={`/quality/checks?entity_type=${item.entity_type}&field_name=${encodeURIComponent(item.field_name)}&batch_id=${item.latest_batch_id}`}
+      title={`最新批次 ${item.latest_batch_id}：该字段 ${item.latest_batch_failed} 条失败，点击前往修正`}
+    >
+      <Badge className="border border-red-200 bg-red-100 font-normal text-red-700 hover:bg-red-200">
+        {item.latest_batch_failed} 待修复
+      </Badge>
+    </Link>
+  );
+}
+
 function FieldsPanel({ writable, initialEntityType }: { writable: boolean; initialEntityType?: EntityType | null }) {
   // 过滤 / 分页状态：映射到后端查询参数 entity_type / view_section / must_govern / keyword / skip / limit
   const [entityType, setEntityType] = useState<EntityType | typeof ALL>(ALL);
@@ -1086,6 +1126,8 @@ function FieldsPanel({ writable, initialEntityType }: { writable: boolean; initi
                 <TableHead>必须治理</TableHead>
                 <TableHead>关联术语</TableHead>
                 <TableHead>标准数</TableHead>
+                <TableHead>治理规则数</TableHead>
+                <TableHead>治理状态</TableHead>
                 <TableHead>业务定义</TableHead>
                 {writable && <TableHead className="text-right">操作</TableHead>}
               </TableRow>
@@ -1136,14 +1178,29 @@ function FieldsPanel({ writable, initialEntityType }: { writable: boolean; initi
                   </TableCell>
                   <TableCell>
                     {item.standard_count > 0 ? (
-                      <Badge variant="secondary" className="font-normal">
-                        {item.standard_count}
-                      </Badge>
+                      <Link
+                        to={`/quality/standards?entity_type=${item.entity_type}&field_name=${encodeURIComponent(item.field_name)}`}
+                        title="查看该字段关联的数据标准"
+                      >
+                        <Badge variant="secondary" className="font-normal hover:bg-gray-200">
+                          {item.standard_count}
+                        </Badge>
+                      </Link>
                     ) : (
                       <span className="text-xs text-gray-400">—</span>
                     )}
                   </TableCell>
-                  <TableCell className="max-w-56 text-xs text-gray-500">
+                  <TableCell className="whitespace-nowrap text-sm">
+                    {item.quality_rule_count > 0 ? (
+                      item.quality_rule_count
+                    ) : (
+                      <span className="text-xs text-gray-400">—</span>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <GovernanceStatusBadge item={item} />
+                  </TableCell>
+                  <TableCell className="max-w-48 text-xs text-gray-500">
                     {item.business_definition ? (
                       <span className="block truncate" title={item.business_definition}>
                         {item.business_definition}

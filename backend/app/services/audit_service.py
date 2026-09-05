@@ -22,6 +22,7 @@ class AuditService:
         "metadata_field_update": "更新元数据字段",
         "glossary_create": "创建业务术语",
         "glossary_update": "更新业务术语",
+        "record_field_update": "修正存量字段值",
     }
 
     STATUS_LABELS = {

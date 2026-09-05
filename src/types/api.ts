@@ -406,6 +406,14 @@ export interface MetadataField {
   glossary_term_name: string | null;
   /** 引用该字段的数据标准数（GET 列表端点装配带出） */
   standard_count: number;
+  /** 治理规则数（经标准关联；无规则 = 未纳入规则治理，enrich_field_governance 装配） */
+  quality_rule_count: number;
+  /** 该实体最近一次检测批次 id（从未检测为 null） */
+  latest_batch_id: string | null;
+  /** 最新批次中该字段失败数（0 = 达标，>0 = 待修复） */
+  latest_batch_failed: number;
+  /** 最新批次执行时间（从未检测为 null） */
+  latest_checked_at: string | null;
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -510,4 +518,27 @@ export interface GlossaryTermCreatePayload {
 export interface GlossaryTermUpdatePayload {
   definition?: string | null;
   aliases?: string[] | null;
+}
+
+// ========== Records 存量纠正（字段治理闭环修复环节） ==========
+
+/**
+ * POST /api/records/{entity_type}/{record_id}/fix 请求体
+ * （= schemas.RecordFieldFixRequest）。
+ * value 为 null / 空串表示清除该字段键（仅标准非必填字段；必填与身份列后端拒绝）。
+ */
+export interface RecordFieldFixPayload {
+  field_name: string;
+  value?: unknown;
+}
+
+/** POST /api/records/{entity_type}/{record_id}/fix 响应（= schemas.RecordFieldFixResponse） */
+export interface RecordFieldFixResult {
+  record_id: string;
+  entity_type: EntityType;
+  /** 规范化字段名（以数据标准登记为准） */
+  field_name: string;
+  old_value: unknown;
+  new_value: unknown;
+  updated_at: string;
 }

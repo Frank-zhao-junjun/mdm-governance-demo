@@ -36,6 +36,7 @@ class StepName(str, PyEnum):
     METADATA_FIELD_UPDATE = "metadata_field_update"
     GLOSSARY_CREATE = "glossary_create"
     GLOSSARY_UPDATE = "glossary_update"
+    RECORD_FIELD_UPDATE = "record_field_update"
 
 
 class RuleType(str, PyEnum):

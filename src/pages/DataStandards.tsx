@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Plus, Pencil, Trash2, Search, RefreshCw } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
@@ -96,12 +97,22 @@ function formatTimestamp(raw: string): string {
 const DataStandards: React.FC = () => {
   const writable = useMemo(() => canWrite(), []);
 
+  // 深链（元数据治理状态 / 字段跳转）：?entity_type=&field_name= 仅做一次性初始值，不订阅 URL
+  const [searchParams] = useSearchParams();
+  const initialType = searchParams.get('entity_type');
+  const initialField = searchParams.get('field_name');
+
   // 过滤 / 分页状态：全部映射到后端查询参数 entity_type / sap_table / skip / limit（SPEC §3.1）
-  const [entityType, setEntityType] = useState<EntityType | typeof ALL>(ALL);
+  const [entityType, setEntityType] = useState<EntityType | typeof ALL>(() =>
+    ENTITY_TYPE_OPTIONS.some((option) => option.value === initialType)
+      ? (initialType as EntityType)
+      : ALL,
+  );
   const [sapTable, setSapTable] = useState<string>(ALL);
   const [limit, setLimit] = useState<number>(DEFAULT_LIMIT);
   const [skip, setSkip] = useState<number>(0);
-  const [keyword, setKeyword] = useState('');
+  // 深链字段名注入就地搜索框（当前页内过滤；实体预选后单页容得下全部标准）
+  const [keyword, setKeyword] = useState(() => (initialField && initialField.length > 0 ? initialField : ''));
 
   const [items, setItems] = useState<DataStandard[]>([]);
   const [total, setTotal] = useState(0);

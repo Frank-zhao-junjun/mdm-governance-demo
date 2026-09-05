@@ -327,6 +327,11 @@ class MetadataFieldResponse(MetadataFieldBase):
     id: str
     glossary_term_name: Optional[str] = None  # 关联业务术语名（GET 列表端点批量装配带出，可空）
     standard_count: int = 0                   # 引用该字段的数据标准数（GET 列表端点批量装配带出）
+    # 字段治理状态（enrich_field_governance 装配；POST/PUT 单条响应亦走同一口径）
+    quality_rule_count: int = 0               # 经标准关联的质量规则数（无规则 = 未纳入规则治理）
+    latest_batch_id: Optional[str] = None     # 该实体最近一次检测批次 id（从未检测为 None）
+    latest_batch_failed: int = 0              # 最新批次中该字段失败数（0 = 达标，>0 = 待修复）
+    latest_checked_at: Optional[datetime] = None  # 最新批次执行时间
     created_at: datetime
     updated_at: datetime
 
@@ -389,3 +394,20 @@ class GlossaryTermResponse(GlossaryTermBase):
     updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+# ========== Records 存量纠正（字段治理闭环修复环节） ==========
+
+class RecordFieldFixRequest(BaseModel):
+    field_name: str = Field(..., min_length=1, max_length=100)
+    # None / 空串表示清除该字段键（仅允许标准非必填字段；必填与编码列拒绝）
+    value: Any = None
+
+
+class RecordFieldFixResponse(BaseModel):
+    record_id: str
+    entity_type: str
+    field_name: str     # 规范化字段名（以数据标准登记为准）
+    old_value: Any = None
+    new_value: Any = None
+    updated_at: datetime

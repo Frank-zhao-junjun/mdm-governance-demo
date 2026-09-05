@@ -210,7 +210,8 @@ python -m pytest tests/test_auth.py                                       # 单�
 
 - **认证**：所有 API 必须携带有效 JWT（无免认证回退）；`get_current_user` 不允许任何无 token 放行
 - **密钥**：生产环境 `MDM_SECRET_KEY` 独立环境变量，禁止硬编码；`DEEPSEEK_API_KEY` 仅由环境变量提供，日志不记录 prompt 或密钥
-- **归并门禁**：merge-execute 仅 admin/data_admin 可调用；未批准返回 409；批准后只返回 `ready` 交外部执行器，**禁止**平台直接改写 `material_records`
+- **归并门禁**：merge-execute 仅 admin/data_admin 可调用；未批准返回 409；批准后只返回 `ready` 交外部执行器，**禁止**平台直接改写 `material_records`（豁免范围见「记录修正门禁」）
+- **记录修正门禁**：`POST /api/records/{entity_type}/{record_id}/fix`（`services/record_fixer.py` + `api/records.py`）是存量记录唯一的字段级修正写口（CSV `/api/data-import` 为批量写口，其余路径仍禁止写）：仅 admin/data_admin（require_admin）；字段必须命中该实体 data_standard（规范化名以 standard.field_name 为准、ilike 匹配防 camelCase）；落点由 `entity_accessor.describe_source` 裁决（编码列 MATNR/LIFNR/KUNNR/PARTNER → 冗余列 material_code/partner_code，其余 → attributes JSON 整体替换）；护栏：必填禁空、pattern 预校验、编码唯一冲突 409（预查 + IntegrityError 兜底）、NOT NULL 身份列禁删；成功落 audit（step_name=record_field_update），服务层不写审计
 - **审批快照**：高风险 merge 批准必须填写 opinion 且 confirmed=true，保存审批前 status/evidence/trace 快照到 `approval_evidence`
 - **Skill 无副作用**：Skill 层只输出建议，禁止在 Skill 内写库
 - **编排幂等**：编排器必须按 request_id 检查已有工单，重复提交不得产生重复工单

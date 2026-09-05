@@ -143,6 +143,7 @@ def get_quality_check_results(
     entity_id: Optional[str] = None,
     severity: Optional[str] = None,
     batch_id: Optional[str] = None,
+    field_name: Optional[str] = None,
     skip: int = 0,
     limit: int = 50,
 ) -> Tuple[List[models.QualityCheckResult], int]:
@@ -155,6 +156,8 @@ def get_quality_check_results(
         query = query.filter(models.QualityCheckResult.severity == severity)
     if batch_id:
         query = query.filter(models.QualityCheckResult.batch_id == batch_id)
+    if field_name:
+        query = query.filter(models.QualityCheckResult.field_name == field_name)
     total = query.count()
     items = (
         query.order_by(
@@ -210,6 +213,20 @@ def get_latest_quality_check_batch(db: Session, entity_type: str) -> Optional[mo
     )
 
 
+def count_failed_results_by_field(db: Session, batch_id: str) -> Dict[str, int]:
+    """按字段名批量统计某检测批次中的失败数（字段治理状态装配用，一次 GROUP BY）。"""
+    rows = (
+        db.query(models.QualityCheckResult.field_name, func.count())
+        .filter(
+            models.QualityCheckResult.batch_id == batch_id,
+            models.QualityCheckResult.field_name.isnot(None),
+        )
+        .group_by(models.QualityCheckResult.field_name)
+        .all()
+    )
+    return {row[0]: row[1] for row in rows}
+
+
 # ========== Stock Records ==========
 
 def get_material_records(db: Session, entity_ids: Optional[List[str]] = None, limit: int = 5_000) -> List[models.MaterialRecord]:
@@ -226,6 +243,45 @@ def get_partner_records(db: Session, entity_type: Optional[str] = None, entity_i
     if entity_ids:
         query = query.filter(models.PartnerRecord.id.in_(entity_ids))
     return query.limit(limit).all()
+
+
+def get_material_record(db: Session, record_id: str) -> Optional[models.MaterialRecord]:
+    """按主键取单条物料记录（存量纠正端点定位用）。"""
+    return (
+        db.query(models.MaterialRecord)
+        .filter(models.MaterialRecord.id == record_id)
+        .first()
+    )
+
+
+def get_partner_record(db: Session, entity_type: str, record_id: str) -> Optional[models.PartnerRecord]:
+    """按主键 + 实体类型取单条伙伴记录（存量纠正端点定位用，隔离 supplier/customer）。"""
+    return (
+        db.query(models.PartnerRecord)
+        .filter(
+            models.PartnerRecord.entity_type == entity_type,
+            models.PartnerRecord.id == record_id,
+        )
+        .first()
+    )
+
+
+def get_data_standard_for_field(
+    db: Session, entity_type: str, field_name: str
+) -> Optional[models.DataStandard]:
+    """按实体 + 字段名（大小写不敏感）取数据标准，供存量纠正护栏校验。
+
+    返回行的 field_name 即规范化名（防 SMVendorID 等 camelCase 被 upper() 破坏）。
+    """
+    return (
+        db.query(models.DataStandard)
+        .filter(
+            models.DataStandard.entity_type == entity_type,
+            models.DataStandard.field_name.ilike(field_name.strip()),
+        )
+        .order_by(models.DataStandard.field_name)
+        .first()
+    )
 
 
 # ========== Suspected Errors (SPEC §3.3) ==========
@@ -476,6 +532,26 @@ def count_standards_by_field_ids(db: Session, field_ids: List[str]) -> Dict[str,
         return {}
     rows = (
         db.query(models.DataStandard.metadata_field_id, func.count())
+        .filter(models.DataStandard.metadata_field_id.in_(field_ids))
+        .group_by(models.DataStandard.metadata_field_id)
+        .all()
+    )
+    return {row[0]: row[1] for row in rows}
+
+
+def count_rules_by_field_ids(db: Session, field_ids: List[str]) -> Dict[str, int]:
+    """按元数据字段 id 批量统计经标准关联的质量规则数（字段治理状态装配用）。
+
+    链：QualityCheckRule.standard_id → DataStandard.metadata_field_id，一次 JOIN + GROUP BY。
+    """
+    if not field_ids:
+        return {}
+    rows = (
+        db.query(models.DataStandard.metadata_field_id, func.count(models.QualityCheckRule.id))
+        .join(
+            models.QualityCheckRule,
+            models.QualityCheckRule.standard_id == models.DataStandard.id,
+        )
         .filter(models.DataStandard.metadata_field_id.in_(field_ids))
         .group_by(models.DataStandard.metadata_field_id)
         .all()

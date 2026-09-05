@@ -744,3 +744,95 @@ class TestStandardFieldLink:
         assert by_name["LIFNR"]["metadata_field_id"] is None
         assert by_name["LIFNR"]["metadata_field_label"] is None
         assert by_name["LIFNR"]["metadata_view_section"] is None
+
+
+# ========== Task 5: 字段治理状态装配（登记册治理列口径） ==========
+
+from app.services import record_fixer  # noqa: E402
+from app.services.rule_derivation import derive_rule_rows  # noqa: E402
+
+
+def _governance_keys():
+    return {"quality_rule_count", "latest_batch_id", "latest_batch_failed", "latest_checked_at"}
+
+
+class TestFieldGovernanceAssembly:
+    """治理列四元组口径：列表与 PUT 响应同源；run 前后/修复后状态正确流转。
+
+    基线（metadata_db）：MATNR 字段已存在；seeded MATNR standard 默认未关联
+    metadata_field_id → 治理数必须先回填关联才>0（与 init_db 回填路径一致）。
+    """
+
+    def _link_and_derive(self, db):
+        standard = db.query(models.DataStandard).filter(
+            models.DataStandard.field_name == "MATNR"
+        ).one()
+        standard.metadata_field_id = _field_id(db, "MATNR")
+        db.add_all(derive_rule_rows(db.query(models.DataStandard).all()))
+        db.commit()
+
+    def _matnr_item(self, client):
+        return next(
+            i for i in client.get(f"{BASE}/fields").json()["items"]
+            if i["field_name"] == "MATNR"
+        )
+
+    def test_defaults_before_governance_and_run(self, client, metadata_db):
+        """未关联标准/未检测：规则数 0、无批次、失败 0、checked_at None。"""
+        item = self._matnr_item(client)
+        assert _governance_keys() <= set(item)
+        assert item["quality_rule_count"] == 0
+        assert item["latest_batch_id"] is None
+        assert item["latest_batch_failed"] == 0
+        assert item["latest_checked_at"] is None
+
+    def test_after_link_and_run_status_flows(self, client, data_client, metadata_db):
+        """关联+派生+run 后：MATNR 规则数 3、批次/时间就位、失败 1（脏记录）。"""
+        db = metadata_db
+        self._link_and_derive(db)
+        db.add(models.MaterialRecord(
+            material_code="M1234", material_name="六角螺栓 M8x30 热镀锌",
+            attributes={},
+        ))
+        db.commit()
+
+        # run 前：规则数已就位（经标准关联），批次仍未发生
+        before = self._matnr_item(client)
+        assert before["quality_rule_count"] == 3  # null + format + unique
+        assert before["latest_batch_id"] is None
+
+        batch_id = data_client.post(
+            "/api/quality-checks/run", json={"entity_type": "material"}
+        ).json()["batch_id"]
+        after = self._matnr_item(client)
+        assert after["latest_batch_id"] == batch_id
+        assert after["latest_batch_failed"] == 1  # M1234 编码格式错
+        assert after["latest_checked_at"] is not None
+
+        # 修复 → 重跑 → 同字段失败归零（治理闭环状态口径）
+        m = db.query(models.MaterialRecord).filter(
+            models.MaterialRecord.material_code == "M1234"
+        ).one()
+        record_fixer.fix_record_field(db, "material", str(m.id), "MATNR", "M10234")
+        batch2 = data_client.post(
+            "/api/quality-checks/run", json={"entity_type": "material"}
+        ).json()["batch_id"]
+        fixed = self._matnr_item(client)
+        assert fixed["latest_batch_id"] == batch2
+        assert fixed["latest_batch_failed"] == 0
+
+    def test_put_response_carries_governance_state(self, client, data_client, metadata_db):
+        """PUT /fields 响应与列表同一口径（编辑保存后回显治理状态）。"""
+        db = metadata_db
+        self._link_and_derive(db)
+        resp = data_client.put(
+            f"{BASE}/fields/{_field_id(db, 'MATNR')}", json={"field_label": "物料编码（治理）"}
+        )
+        assert resp.status_code == 200
+        body = resp.json()
+        assert _governance_keys() <= set(body)
+        assert body["quality_rule_count"] == 3
+        assert body["latest_batch_id"] is None  # 未 run 过
+
+        # 列表口径一致（同一装配函数）
+        assert self._matnr_item(client)["quality_rule_count"] == 3

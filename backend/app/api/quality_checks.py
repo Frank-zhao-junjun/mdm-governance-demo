@@ -95,6 +95,7 @@ def list_results(
     entity_id: Optional[str] = Query(None, max_length=36),
     severity: Optional[str] = Query(None, pattern="^(error|warning|info)$"),
     batch_id: Optional[str] = Query(None, max_length=36),
+    field_name: Optional[str] = Query(None, max_length=100),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=500),
     user: dict = Depends(require_any),
@@ -108,6 +109,7 @@ def list_results(
         entity_id=entity_id,
         severity=severity,
         batch_id=batch_id,
+        field_name=field_name,
         skip=skip,
         limit=limit,
     )
