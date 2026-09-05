@@ -16,7 +16,17 @@ from app.services.audit_service import AuditService
 router = APIRouter(prefix="/api/records", tags=["Records"])
 
 
-@router.post("/{entity_type}/{record_id}/fix", response_model=schemas.RecordFieldFixResponse)
+@router.post(
+    "/{entity_type}/{record_id}/fix",
+    response_model=schemas.RecordFieldFixResponse,
+    summary="存量记录字段级修正（唯一写口，落审计）",
+    responses={
+        400: {"description": "字段未登记 / 未命中标准 / 必填禁空 / pattern 预校验失败"},
+        403: {"description": "权限不足（需 admin / data_admin）"},
+        404: {"description": "记录不存在 / 字段未命中任何标准"},
+        409: {"description": "编码唯一性冲突"},
+    },
+)
 def fix_record_field(
     entity_type: str,
     record_id: str,

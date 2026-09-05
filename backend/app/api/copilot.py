@@ -37,7 +37,7 @@ def _ticket_view(ticket: Any, ticket_type: str) -> dict[str, Any]:
     }
 
 
-@router.get("/todos")
+@router.get("/todos", summary="待人工裁决工单列表（质量 + 归并）")
 def list_todos(
     ticket_type: str | None = Query(None, pattern="^(quality|merge)$"),
     user: dict = Depends(require_any),
@@ -59,7 +59,15 @@ def list_todos(
     return {"total": len(items), "items": items}
 
 
-@router.post("/{ticket_type}/{ticket_id}/approve")
+@router.post(
+    "/{ticket_type}/{ticket_id}/approve",
+    summary="批准工单（归并工单须填写意见并二次确认）",
+    responses={
+        403: {"description": "权限不足（需部门审批 / admin / data_admin）"},
+        404: {"description": "治理工单不存在"},
+        422: {"description": "高风险归并裁决缺意见或未二次确认"},
+    },
+)
 def approve_ticket(
     ticket_type: str,
     ticket_id: str,
@@ -70,7 +78,15 @@ def approve_ticket(
     return _decide(ticket_type, ticket_id, "approve", payload, user, db)
 
 
-@router.post("/{ticket_type}/{ticket_id}/reject")
+@router.post(
+    "/{ticket_type}/{ticket_id}/reject",
+    summary="驳回工单",
+    responses={
+        403: {"description": "权限不足（需部门审批 / admin / data_admin）"},
+        404: {"description": "治理工单不存在"},
+        422: {"description": "高风险归并裁决缺意见或未二次确认"},
+    },
+)
 def reject_ticket(
     ticket_type: str,
     ticket_id: str,
@@ -81,7 +97,15 @@ def reject_ticket(
     return _decide(ticket_type, ticket_id, "reject", payload, user, db)
 
 
-@router.post("/{ticket_type}/{ticket_id}/overturn")
+@router.post(
+    "/{ticket_type}/{ticket_id}/overturn",
+    summary="撤销裁决（翻案，工单回到待办）",
+    responses={
+        403: {"description": "权限不足（需部门审批 / admin / data_admin）"},
+        404: {"description": "治理工单不存在"},
+        422: {"description": "高风险归并裁决缺意见或未二次确认"},
+    },
+)
 def overturn_ticket(
     ticket_type: str,
     ticket_id: str,
@@ -121,7 +145,11 @@ def _decide(ticket_type: str, ticket_id: str, action: str, payload: schemas.Tick
     return {"ticket": _ticket_view(ticket, ticket_type), "action": action}
 
 
-@router.get("/accountability")
+@router.get(
+    "/accountability",
+    summary="工单问责追溯（裁决链 + Agent trace + 审批快照）",
+    responses={404: {"description": "治理工单不存在"}},
+)
 def accountability(
     ticket_id: str = Query(..., min_length=1, max_length=36),
     user: dict = Depends(require_any),

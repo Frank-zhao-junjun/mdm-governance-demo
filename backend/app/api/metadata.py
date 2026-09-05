@@ -23,14 +23,27 @@ def _require_glossary_term(db: Session, term_id: Optional[str]) -> None:
         raise HTTPException(status_code=404, detail="关联的术语不存在")
 
 
-@router.get("/entities", response_model=List[schemas.MetadataEntityResponse])
+@router.get(
+    "/entities",
+    response_model=List[schemas.MetadataEntityResponse],
+    summary="实体元数据总览（附 must_govern 字段数 / 总字段数）",
+)
 def list_metadata_entities(user: dict = Depends(require_any), db: Session = Depends(get_db)):
     """实体总览：每个实体附 must_govern 字段数 / 总字段数。"""
     _ = user
     return metadata_service.get_entity_overview(db)
 
 
-@router.put("/entities/{entity_type}", response_model=schemas.MetadataEntityResponse)
+@router.put(
+    "/entities/{entity_type}",
+    response_model=schemas.MetadataEntityResponse,
+    summary="更新实体级治理属性（负责人 / 部门 / 标签 / 敏感级别）",
+    responses={
+        400: {"description": "未提供可更新字段"},
+        403: {"description": "权限不足（需 admin / data_admin）"},
+        404: {"description": "实体元数据不存在"},
+    },
+)
 def update_metadata_entity(
     entity_type: str,
     payload: schemas.MetadataEntityUpdate,
@@ -58,7 +71,11 @@ def update_metadata_entity(
     )
 
 
-@router.get("/fields", response_model=schemas.MetadataFieldListResponse)
+@router.get(
+    "/fields",
+    response_model=schemas.MetadataFieldListResponse,
+    summary="字段登记册列表（实体 / 分区 / 治理标记 / 关键字过滤）",
+)
 def list_metadata_fields(
     entity_type: Optional[str] = Query(None, max_length=50),
     view_section: Optional[str] = Query(None, max_length=100),
@@ -97,7 +114,17 @@ def list_metadata_fields(
     return {"total": total, "items": result}
 
 
-@router.post("/fields", response_model=schemas.MetadataFieldResponse, status_code=201)
+@router.post(
+    "/fields",
+    response_model=schemas.MetadataFieldResponse,
+    status_code=201,
+    summary="登记元数据字段",
+    responses={
+        403: {"description": "权限不足（需 admin / data_admin）"},
+        404: {"description": "关联的术语不存在"},
+        409: {"description": "同（实体, SAP 表, 字段）的元数据字段已存在"},
+    },
+)
 def create_metadata_field(
     payload: schemas.MetadataFieldCreate,
     user: dict = Depends(require_admin),
@@ -126,7 +153,16 @@ def create_metadata_field(
     return field
 
 
-@router.put("/fields/{field_id}", response_model=schemas.MetadataFieldResponse)
+@router.put(
+    "/fields/{field_id}",
+    response_model=schemas.MetadataFieldResponse,
+    summary="更新元数据字段（身份键不可变）",
+    responses={
+        400: {"description": "未提供可更新字段"},
+        403: {"description": "权限不足（需 admin / data_admin）"},
+        404: {"description": "元数据字段 / 关联术语不存在"},
+    },
+)
 def update_metadata_field(
     field_id: str,
     payload: schemas.MetadataFieldUpdate,
@@ -168,7 +204,11 @@ def _to_glossary_response(db: Session, term: models.GlossaryTerm) -> dict:
     return item
 
 
-@router.get("/glossary", response_model=List[schemas.GlossaryTermResponse])
+@router.get(
+    "/glossary",
+    response_model=List[schemas.GlossaryTermResponse],
+    summary="业务术语列表（附关联字段数）",
+)
 def list_glossary_terms(user: dict = Depends(require_any), db: Session = Depends(get_db)):
     """业务术语列表：每个术语附关联元数据字段数 field_count。"""
     _ = user
@@ -182,7 +222,16 @@ def list_glossary_terms(user: dict = Depends(require_any), db: Session = Depends
     return items
 
 
-@router.post("/glossary", response_model=schemas.GlossaryTermResponse, status_code=201)
+@router.post(
+    "/glossary",
+    response_model=schemas.GlossaryTermResponse,
+    status_code=201,
+    summary="创建业务术语",
+    responses={
+        403: {"description": "权限不足（需 admin / data_admin）"},
+        409: {"description": "术语已存在"},
+    },
+)
 def create_glossary_term(
     payload: schemas.GlossaryTermCreate,
     user: dict = Depends(require_admin),
@@ -205,7 +254,16 @@ def create_glossary_term(
     return _to_glossary_response(db, term)
 
 
-@router.put("/glossary/{term_id}", response_model=schemas.GlossaryTermResponse)
+@router.put(
+    "/glossary/{term_id}",
+    response_model=schemas.GlossaryTermResponse,
+    summary="更新业务术语（term 名称不可变）",
+    responses={
+        400: {"description": "未提供可更新字段"},
+        403: {"description": "权限不足（需 admin / data_admin）"},
+        404: {"description": "术语不存在"},
+    },
+)
 def update_glossary_term(
     term_id: str,
     payload: schemas.GlossaryTermUpdate,

@@ -9,7 +9,11 @@ from app.core.database import get_db
 router = APIRouter(prefix="/api/evidence", tags=["Governance Evidence"])
 
 
-@router.get("/{ticket_type}/{ticket_id}")
+@router.get(
+    "/{ticket_type}/{ticket_id}",
+    summary="工单证据链查询（证据 JSON + Agent trace）",
+    responses={404: {"description": "未知工单类型 / 治理工单不存在"}},
+)
 def get_evidence(ticket_type: str, ticket_id: str, user: dict = Depends(require_any), db: Session = Depends(get_db)):
     _ = user
     model = {"quality": models.QualityTicket, "merge": models.MergeTicket}.get(ticket_type)

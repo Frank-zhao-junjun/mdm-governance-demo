@@ -86,6 +86,18 @@ class QualityCheckRunRequest(BaseModel):
     entity_ids: Optional[List[str]] = None
     rule_ids: Optional[List[str]] = None
 
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {
+                    "entity_type": "material",
+                    "entity_ids": None,
+                    "rule_ids": None,
+                }
+            ]
+        }
+    )
+
 
 class QualityCheckRunResponse(BaseModel):
     batch_id: str
@@ -195,6 +207,18 @@ class SuspectedErrorDetectRequest(BaseModel):
     error_types: Optional[List[SuspectedErrorType]] = None
     entity_ids: Optional[List[str]] = None
 
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {
+                    "entity_type": "material",
+                    "error_types": ["duplicate", "naming"],
+                    "entity_ids": None,
+                }
+            ]
+        }
+    )
+
 
 class SuspectedErrorDetectResponse(BaseModel):
     """重检去重结果（SPEC §2.7）：新建 / 刷新 pending / 误报白名单跳过 / 实体消失自动关闭。"""
@@ -265,6 +289,10 @@ class TicketDecisionRequest(BaseModel):
 
 class MergeExecuteRequest(BaseModel):
     ticket_id: str = Field(..., min_length=1, max_length=36)
+
+    model_config = ConfigDict(
+        json_schema_extra={"examples": [{"ticket_id": "mt-0001"}]}
+    )
 
 
 class GovernanceOwnerCreate(BaseModel):
@@ -402,6 +430,14 @@ class RecordFieldFixRequest(BaseModel):
     field_name: str = Field(..., min_length=1, max_length=100)
     # None / 空串表示清除该字段键（仅允许标准非必填字段；必填与编码列拒绝）
     value: Any = None
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {"field_name": "material_desc", "value": "不锈钢法兰 DN50 PN16"}
+            ]
+        }
+    )
 
 
 class RecordFieldFixResponse(BaseModel):

@@ -21,7 +21,15 @@ from app.services.audit_service import AuditService
 router = APIRouter(prefix="/api/data-import", tags=["Data Import"])
 
 
-@router.post("/partners", response_model=schemas.PartnerImportResponse)
+@router.post(
+    "/partners",
+    response_model=schemas.PartnerImportResponse,
+    summary="导入供应商 / 客户 CSV（按编码 upsert，≤5,000 行）",
+    responses={
+        400: {"description": "文件级缺陷：类型 / 大小 / 表头 / 行数超限"},
+        403: {"description": "权限不足（需 admin / data_admin）"},
+    },
+)
 async def import_partner_csv(
     file: UploadFile = File(...),
     entity_type: str = Form(..., pattern="^(supplier|customer)$"),

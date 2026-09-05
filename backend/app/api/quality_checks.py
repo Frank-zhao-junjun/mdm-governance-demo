@@ -23,7 +23,15 @@ _ENTITY_PATTERN = "^(material|supplier|customer)$"
 _SEVERITIES = ("error", "warning", "info")
 
 
-@router.post("/run", response_model=schemas.QualityCheckRunResponse)
+@router.post(
+    "/run",
+    response_model=schemas.QualityCheckRunResponse,
+    summary="执行质量检测批次（同步，≤5,000 实体）",
+    responses={
+        400: {"description": "超批量上限 / 无可执行规则 / 无匹配实体"},
+        403: {"description": "权限不足（需 admin / data_admin）"},
+    },
+)
 def run_quality_check(
     payload: schemas.QualityCheckRunRequest,
     user: dict = Depends(require_admin),
@@ -73,7 +81,11 @@ def run_quality_check(
     }
 
 
-@router.get("/rules", response_model=schemas.QualityCheckRuleListResponse)
+@router.get(
+    "/rules",
+    response_model=schemas.QualityCheckRuleListResponse,
+    summary="质量检测规则列表",
+)
 def list_rules(
     entity_type: Optional[str] = Query(None, pattern=_ENTITY_PATTERN),
     skip: int = Query(0, ge=0),
@@ -89,7 +101,11 @@ def list_rules(
     return {"total": total, "items": items}
 
 
-@router.get("/results", response_model=schemas.QualityCheckResultListResponse)
+@router.get(
+    "/results",
+    response_model=schemas.QualityCheckResultListResponse,
+    summary="质量检测结果列表（仅存失败项）",
+)
 def list_results(
     entity_type: str = Query(..., pattern=_ENTITY_PATTERN),
     entity_id: Optional[str] = Query(None, max_length=36),
@@ -116,7 +132,11 @@ def list_results(
     return {"total": total, "items": items}
 
 
-@router.get("/batches", response_model=schemas.QualityCheckBatchListResponse)
+@router.get(
+    "/batches",
+    response_model=schemas.QualityCheckBatchListResponse,
+    summary="质量检测批次列表（最新在前）",
+)
 def list_batches(
     entity_type: str = Query(..., pattern=_ENTITY_PATTERN),
     skip: int = Query(0, ge=0),
@@ -130,7 +150,12 @@ def list_batches(
     return {"total": total, "items": items}
 
 
-@router.get("/report", response_model=schemas.QualityCheckReportResponse)
+@router.get(
+    "/report",
+    response_model=schemas.QualityCheckReportResponse,
+    summary="质量检测批次报告（批次统计 + 失败分布）",
+    responses={404: {"description": "检测批次不存在"}},
+)
 def get_report(
     entity_type: str = Query(..., pattern=_ENTITY_PATTERN),
     batch_id: Optional[str] = Query(None, max_length=36),

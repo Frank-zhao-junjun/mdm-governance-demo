@@ -22,7 +22,15 @@ _ERROR_TYPE_PATTERN = "^(duplicate|naming|classification|unit)$"
 _STATUS_PATTERN = "^(pending|confirmed|resolved|false_positive)$"
 
 
-@router.post("/detect", response_model=schemas.SuspectedErrorDetectResponse)
+@router.post(
+    "/detect",
+    response_model=schemas.SuspectedErrorDetectResponse,
+    summary="执行疑似错误检测（三键去重 + 误报白名单跳过）",
+    responses={
+        400: {"description": "不支持的错误类型 / 超实体批量上限"},
+        403: {"description": "权限不足（需 admin / data_admin）"},
+    },
+)
 def detect_suspected_errors(
     payload: schemas.SuspectedErrorDetectRequest,
     user: dict = Depends(require_admin),
@@ -56,7 +64,11 @@ def detect_suspected_errors(
     return counters
 
 
-@router.get("/", response_model=schemas.SuspectedErrorListResponse)
+@router.get(
+    "/",
+    response_model=schemas.SuspectedErrorListResponse,
+    summary="疑似错误列表（支持类型 / 状态过滤，最新在前）",
+)
 def list_suspected_errors(
     entity_type: str = Query(..., pattern=schemas._ENTITY_PATTERN),
     error_type: Optional[str] = Query(None, pattern=_ERROR_TYPE_PATTERN),
@@ -79,7 +91,15 @@ def list_suspected_errors(
     return {"total": total, "items": items}
 
 
-@router.post("/{error_id}/resolve", response_model=schemas.SuspectedErrorResponse)
+@router.post(
+    "/{error_id}/resolve",
+    response_model=schemas.SuspectedErrorResponse,
+    summary="裁决疑似错误（确认 / 解决 / 误报）",
+    responses={
+        403: {"description": "权限不足（需 admin / data_admin）"},
+        404: {"description": "疑似错误不存在"},
+    },
+)
 def resolve_suspected_error(
     error_id: str,
     payload: schemas.SuspectedErrorResolveRequest,

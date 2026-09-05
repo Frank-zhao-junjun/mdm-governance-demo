@@ -132,7 +132,7 @@
 
 - **前端入口**：`src/main.tsx` → `src/App.tsx`（路由定义）
 - **前端 API 客户端**：`src/lib/api.ts` — 封装 fetch + JWT；领域封装在 `governance.ts` / `quality.ts` / `suspected.ts`
-- **后端入口**：`backend/app/main.py` — FastAPI app，注册 9 个 router，含 SPA fallback（`dist/` 存在时非 API 路由返回 `dist/index.html`）
+- **后端入口**：`backend/app/main.py` — FastAPI app，注册 10 个 router（含 records 存量修正），含 SPA fallback（`dist/` 存在时非 API 路由返回 `dist/index.html`）；全部 39 个 operation 已配置中文 summary，关键接口带 `responses` 错误码说明，login 与 4 个写入口请求模型（QualityCheckRunRequest / SuspectedErrorDetectRequest / MergeExecuteRequest / RecordFieldFixRequest）在 OpenAPI 中提供请求示例，`/docs`（Swagger）与 `/redoc` 可直接查阅
 - **后端配置**：`backend/app/core/config.py` — 环境变量驱动，`ENV` 默认 `development`
 - **数据库初始化**：`backend/init_db.py` — 建表 + 种子数据（注意：会先 drop_all 重建，勿对含数据的库执行）
 - **演示数据**：`backend/scripts/seed_demo_data.py` — 固定种子，默认幂等，`--reset` 只删演示对象

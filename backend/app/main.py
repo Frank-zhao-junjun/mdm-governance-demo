@@ -65,7 +65,29 @@ app.include_router(evidence.router)
 app.include_router(records.router)
 
 
-@app.post("/api/auth/login")
+@app.post(
+    "/api/auth/login",
+    summary="用户登录（获取 JWT 令牌）",
+    responses={401: {"description": "用户名或密码错误"}},
+    openapi_extra={
+        "requestBody": {
+            "content": {
+                "application/json": {
+                    "examples": {
+                        "admin": {
+                            "summary": "管理员登录",
+                            "value": {"user_id": "admin001", "password": "adminpass001"},
+                        },
+                        "user": {
+                            "summary": "普通用户登录",
+                            "value": {"user_id": "user001", "password": "password001"},
+                        },
+                    }
+                }
+            }
+        }
+    },
+)
 def login(credentials: dict):
     """Authenticate user and return JWT token.
 
@@ -88,13 +110,17 @@ def login(credentials: dict):
     }
 
 
-@app.get("/api/auth/me")
+@app.get(
+    "/api/auth/me",
+    summary="获取当前登录用户信息",
+    responses={401: {"description": "未认证 / 令牌无效或过期"}},
+)
 def get_me(user: dict = Depends(require_any)):
     """Get current authenticated user info."""
     return user
 
 
-@app.get("/")
+@app.get("/", summary="健康检查 / API 欢迎信息")
 def root():
     return {
         "message": "Stock Data Governance API",
@@ -104,7 +130,7 @@ def root():
 
 
 # Serve index.html for all non-API routes (SPA fallback)
-@app.get("/{path:path}")
+@app.get("/{path:path}", summary="SPA 前端兜底路由（dist/ 存在时返回 index.html）")
 def serve_spa(path: str):
     index_path = os.path.join(static_dir, "index.html")
     if os.path.exists(index_path) and not path.startswith("api") and not path.startswith("docs"):

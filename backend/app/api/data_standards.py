@@ -57,7 +57,12 @@ def _apply_metadata_field(db: Session, data: dict, label_explicit: bool) -> None
         data["field_label"] = field.field_label
 
 
-@router.get("", response_model=schemas.DataStandardListResponse)
+@router.get(
+    "",
+    response_model=schemas.DataStandardListResponse,
+    summary="数据标准列表（支持实体 / SAP 表过滤）",
+    responses={401: {"description": "未认证"}},
+)
 def list_data_standards(
     entity_type: Optional[str] = Query(None, pattern="^(material|supplier|customer)$"),
     sap_table: Optional[str] = Query(None, max_length=50),
@@ -78,7 +83,17 @@ def list_data_standards(
     }
 
 
-@router.post("", response_model=schemas.DataStandardResponse, status_code=201)
+@router.post(
+    "",
+    response_model=schemas.DataStandardResponse,
+    status_code=201,
+    summary="创建数据标准",
+    responses={
+        403: {"description": "权限不足（需 admin / data_admin）"},
+        404: {"description": "关联的元数据字段不存在"},
+        409: {"description": "同（实体, SAP 表, 字段）的数据标准已存在"},
+    },
+)
 def create_data_standard(
     payload: schemas.DataStandardCreate,
     user: dict = Depends(require_admin),
@@ -113,7 +128,17 @@ def create_data_standard(
     return _to_standard_response(standard, _metadata_field_map(db, [standard]))
 
 
-@router.put("/{standard_id}", response_model=schemas.DataStandardResponse)
+@router.put(
+    "/{standard_id}",
+    response_model=schemas.DataStandardResponse,
+    summary="更新数据标准",
+    responses={
+        400: {"description": "未提供可更新字段"},
+        403: {"description": "权限不足（需 admin / data_admin）"},
+        404: {"description": "数据标准 / 关联元数据字段不存在"},
+        409: {"description": "同（实体, SAP 表, 字段）唯一键冲突"},
+    },
+)
 def update_data_standard(
     standard_id: str,
     payload: schemas.DataStandardUpdate,
@@ -157,7 +182,16 @@ def update_data_standard(
     return _to_standard_response(standard, _metadata_field_map(db, [standard]))
 
 
-@router.delete("/{standard_id}", status_code=204)
+@router.delete(
+    "/{standard_id}",
+    status_code=204,
+    summary="删除数据标准",
+    responses={
+        403: {"description": "权限不足（需 admin / data_admin）"},
+        404: {"description": "数据标准不存在"},
+        409: {"description": "仍被质量检测规则引用，禁止删除"},
+    },
+)
 def delete_data_standard(
     standard_id: str,
     user: dict = Depends(require_admin),
