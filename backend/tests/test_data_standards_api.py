@@ -69,7 +69,7 @@ class TestWritePermissions:
 
         client = TestClient(app)
         client.headers.update(
-            {"Authorization": f"Bearer {create_access_token({'sub': 'admin001', 'role': 'admin'})}"}
+            {"Authorization": f"Bearer {create_access_token({'sub': 'admin001', 'role': 'admin', 'ver': 0})}"}
         )
         assert client.post(BASE, json=NEW_STANDARD).status_code == 201
 

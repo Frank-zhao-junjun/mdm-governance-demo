@@ -447,3 +447,72 @@ class RecordFieldFixResponse(BaseModel):
     old_value: Any = None
     new_value: Any = None
     updated_at: datetime
+
+
+# ========== 用户管理 ==========
+
+class UserCreate(BaseModel):
+    """管理员创建用户（管理员建号制，无开放注册）。"""
+    user_id: str = Field(..., min_length=4, max_length=50, pattern=r"^[a-z0-9_]+$")
+    name: str = Field(..., min_length=1, max_length=100)
+    department: Optional[str] = Field(None, max_length=100)
+    role: Literal["applicant", "admin", "data_admin", "dept_approver"] = "applicant"
+    password: str = Field(..., min_length=8, max_length=64)
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {
+                    "user_id": "user003",
+                    "name": "张三",
+                    "department": "质量管理部",
+                    "role": "applicant",
+                    "password": "Str0ngPass!",
+                }
+            ]
+        }
+    )
+
+
+class UserUpdate(BaseModel):
+    """管理员更新用户基本信息/角色/状态。禁用或改角色会使存量 token 立即失效。"""
+    name: Optional[str] = Field(None, min_length=1, max_length=100)
+    department: Optional[str] = Field(None, max_length=100)
+    role: Optional[Literal["applicant", "admin", "data_admin", "dept_approver"]] = None
+    status: Optional[Literal["active", "disabled"]] = None
+
+
+class UserResponse(BaseModel):
+    id: str
+    name: str
+    department: Optional[str] = None
+    role: str
+    status: str
+    token_version: int
+    last_login_at: Optional[datetime] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+
+
+class UserListResponse(BaseModel):
+    total: int
+    items: List[UserResponse]
+
+
+class PasswordResetRequest(BaseModel):
+    """管理员重置密码：成功后该用户全部存量会话失效。"""
+    new_password: str = Field(..., min_length=8, max_length=64)
+    model_config = ConfigDict(
+        json_schema_extra={"examples": [{"new_password": "NewStr0ngPass!"}]}
+    )
+
+
+class PasswordChangeRequest(BaseModel):
+    """本人修改密码：需验证旧密码；成功后所有会话失效，需重新登录。"""
+    old_password: str = Field(..., min_length=1, max_length=64)
+    new_password: str = Field(..., min_length=8, max_length=64)
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [{"old_password": "password001", "new_password": "NewStr0ngPass!"}]
+        }
+    )

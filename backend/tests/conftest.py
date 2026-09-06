@@ -44,15 +44,20 @@ def db():
     """Create fresh database tables and yield a session for each test."""
     Base.metadata.create_all(bind=engine)
     session = TestingSessionLocal()
+    from app.core.seed_users import seed_users
+    seed_users(session)
     yield session
     session.close()
     Base.metadata.drop_all(bind=engine)
 
 
 def _make_client(user_id: str, role: str) -> TestClient:
-    """Build a TestClient carrying a JWT for the given mock user."""
+    """Build a TestClient carrying a JWT for the given seed user.
+
+    Role 必须与库中该用户的实际角色一致（get_current_user 以库为准）。
+    """
     from app.core.auth import create_access_token
-    token = create_access_token({"sub": user_id, "role": role})
+    token = create_access_token({"sub": user_id, "role": role, "ver": 0})
     os.environ.setdefault("ENV", "test")
     client = TestClient(app)
     client.headers.update({"Authorization": f"Bearer {token}"})

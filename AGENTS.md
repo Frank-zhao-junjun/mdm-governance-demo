@@ -74,8 +74,10 @@
 │   │   ├── core/              # 核心配置
 │   │   │   ├── config.py      # 环境变量配置（ENV 默认 development，DEBUG=ENV==development）
 │   │   │   ├── database.py    # 数据库连接
-│   │   │   ├── auth.py        # JWT 认证（用户库为 MOCK_USERS 硬编码，4 种角色；
-│   │   │   │                      #   生产缺 MDM_SECRET_KEY 时在此 fail-fast 抛 RuntimeError）
+│   │   │   ├── auth.py        # JWT 认证（用户库查 users 表，4 种角色；生产缺 MDM_SECRET_KEY
+│   │   │   │                      #   时 fail-fast 抛 RuntimeError；token_version 会话撤销、
+│   │   │   │                      #   连续 5 次失败锁定 15 分钟、ver 严格校验）
+│   │   │   ├── seed_users.py  # 种子用户单一来源（init_db 与测试 conftest 共用）
 │   │   │   └── llm_gateway.py # LLM 网关（mock/DeepSeek，熔断降级，trace_id 透传）
 │   │   ├── services/          # 9 个业务服务
 │   │   │   ├── quality_engine.py      # 检测规则执行引擎
@@ -192,7 +194,7 @@ python -m pytest tests/test_auth.py                                       # 单�
 | `DEEPSEEK_API_KEY` | — | LLM 网关 DeepSeek 模式密钥（默认 mock 无需配置） |
 | `ALLOWED_ORIGINS` | `http://localhost` | 生产模式 CORS 允许源（逗号分隔；DEBUG 模式固定放行 localhost/127.0.0.1:3000/8000） |
 
-## 登录凭据（MOCK_USERS 硬编码）
+## 登录凭据（users 表种子数据，见 app/core/seed_users.py）
 
 | 角色 | 用户名 | 密码 |
 |------|--------|------|
@@ -239,7 +241,7 @@ python -m pytest tests/test_auth.py                                       # 单�
 - `init_db.py` 会 drop_all 后重建所有表，仅用于初始化/重置，勿在生产数据上运行
 - **2026-07 安全修复**：生产部署曾用 `ENV=development` 导致免认证回退生效 + JWT 密钥硬编码可伪造，已修复（ENV=production、删除回退、MDM_SECRET_KEY 独立环境变量）
 - **2026-09 架构演进**：旧版 MDM 申请/审批/金标数据/发布链路已按 SPEC §1.4 移除（applications/classifications/golden_records 等模块与页面），OpenMetadata/BTP 集成代码已删除；`docs/knowledge-graph.md` 与 `graphify-out/` 图谱基于旧版代码，仅供参考
-- `auth.py` 用户库仍是 MOCK_USERS 硬编码，中期应迁入数据库
+- ~~`auth.py` 用户库仍是 MOCK_USERS 硬编码~~ 已迁入 users 表（2026-10 U1）：管理员建号制（无开放注册）、token_version 会话撤销（改密/重置/禁用即 bump）、连续 5 次登录失败锁定 15 分钟；`POST /api/users/me/password` 本人改密、`/api/users` 管理端点全部 require_admin + 审计
 - SLA 升级扫描（3 天 dept_head / 7 天 committee）目前按需触发，尚无独立后台调度器
 - 前端 `pnpm build` 不做类型检查，验证必须单独跑 `tsc`；`tsc -b` 增量缓存可能掩盖错误，验证用 `--force`
 - Git Bash 下 `curl -d` 中文 body 会编码损坏致 JSON 400，冒烟脚本用 Python urllib 代替

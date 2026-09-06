@@ -23,6 +23,11 @@ class AuditService:
         "glossary_create": "创建业务术语",
         "glossary_update": "更新业务术语",
         "record_field_update": "修正存量字段值",
+        "user_login": "用户登录",
+        "user_login_failed": "登录失败",
+        "user_create": "创建用户",
+        "user_update": "更新用户",
+        "user_password_change": "修改密码",
     }
 
     STATUS_LABELS = {

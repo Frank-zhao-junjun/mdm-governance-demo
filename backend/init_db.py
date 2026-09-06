@@ -384,6 +384,11 @@ def init_db():
 
     db = SessionLocal()
     try:
+        # 用户种子（与 conftest 共用 SEED_USERS 定义，保持测试/生产账号一致）
+        from app.core.seed_users import seed_users
+
+        seed_users(db)
+
         standards = _standard_rows()
         db.add_all(standards)
         db.flush()  # 先取 standard.id 供规则行 standard_id FK

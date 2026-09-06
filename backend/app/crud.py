@@ -582,3 +582,93 @@ def count_fields_by_glossary_term_ids(db: Session, term_ids: List[str]) -> Dict[
         .all()
     )
     return {row[0]: row[1] for row in rows}
+
+
+# ========== Users ==========
+
+def get_user(db: Session, user_id: str) -> Optional[models.User]:
+    return db.get(models.User, user_id)
+
+
+def get_users(
+    db: Session,
+    role: Optional[str] = None,
+    status: Optional[str] = None,
+    skip: int = 0,
+    limit: int = 100,
+) -> Tuple[List[models.User], int]:
+    query = db.query(models.User)
+    if role:
+        query = query.filter(models.User.role == role)
+    if status:
+        query = query.filter(models.User.status == status)
+    total = query.count()
+    items = query.order_by(models.User.id).offset(skip).limit(limit).all()
+    return items, total
+
+
+def create_user(
+    db: Session,
+    user_id: str,
+    name: str,
+    password_hash: str,
+    role: str,
+    department: Optional[str] = None,
+    status: str = "active",
+) -> models.User:
+    user = models.User(
+        id=user_id,
+        name=name,
+        department=department,
+        role=role,
+        password_hash=password_hash,
+        status=status,
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return user
+
+
+def update_user(
+    db: Session,
+    user: models.User,
+    changes: dict,
+    bump_token_version: bool = False,
+) -> models.User:
+    for key, value in changes.items():
+        setattr(user, key, value)
+    if bump_token_version:
+        user.token_version += 1
+    db.commit()
+    db.refresh(user)
+    return user
+
+
+def reset_user_password(
+    db: Session,
+    user: models.User,
+    new_password_hash: str,
+) -> models.User:
+    user.password_hash = new_password_hash
+    user.failed_login_count = 0
+    user.locked_until = None
+    user.token_version += 1
+    db.commit()
+    db.refresh(user)
+    return user
+
+
+def change_user_password(
+    db: Session,
+    user: models.User,
+    new_password_hash: str,
+) -> models.User:
+    """本人改密：清零失败计数，bump token_version 使所有存量会话失效。"""
+    user.password_hash = new_password_hash
+    user.failed_login_count = 0
+    user.locked_until = None
+    user.token_version += 1
+    db.commit()
+    db.refresh(user)
+    return user

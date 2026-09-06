@@ -37,6 +37,11 @@ class StepName(str, PyEnum):
     GLOSSARY_CREATE = "glossary_create"
     GLOSSARY_UPDATE = "glossary_update"
     RECORD_FIELD_UPDATE = "record_field_update"
+    USER_LOGIN = "user_login"
+    USER_LOGIN_FAILED = "user_login_failed"
+    USER_CREATE = "user_create"
+    USER_UPDATE = "user_update"
+    USER_PASSWORD_CHANGE = "user_password_change"
 
 
 class RuleType(str, PyEnum):
@@ -65,6 +70,20 @@ class EscalationLevel(str, PyEnum):
     NONE = "none"
     DEPT_HEAD = "dept_head"
     COMMITTEE = "committee"
+
+
+class UserRole(str, PyEnum):
+    """用户角色（与治理 Owner 职责对齐）。"""
+    APPLICANT = "applicant"
+    ADMIN = "admin"
+    DATA_ADMIN = "data_admin"
+    DEPT_APPROVER = "dept_approver"
+
+
+class UserStatus(str, PyEnum):
+    """用户状态：禁用后立即无法登录且存量 token 失效。"""
+    ACTIVE = "active"
+    DISABLED = "disabled"
 
 
 # ========== Models ==========
@@ -422,5 +441,35 @@ class GlossaryTerm(Base):
     term = Column(String(200), nullable=False, unique=True)
     definition = Column(Text, nullable=False)
     aliases = Column(JSON, nullable=True)
+    created_at = Column(DateTime, default=_now_utc)
+    updated_at = Column(DateTime, default=_now_utc, onupdate=_now_utc)
+
+
+class User(Base):
+    """平台用户（管理员建号制，非开放注册）。
+
+    登录失败锁定：连续失败 MAX_FAILED_LOGINS 次后锁定 LOCKOUT_MINUTES 分钟；
+    token_version 变更（改密/禁用/重置）使所有已签发 JWT 立即失效。
+    """
+    __tablename__ = "users"
+
+    id = Column(String(50), primary_key=True)  # 登录名，如 admin001
+    name = Column(String(100), nullable=False)
+    department = Column(String(100), nullable=True)
+    role = Column(
+        Enum(UserRole, values_callable=lambda enum: [member.value for member in enum]),
+        nullable=False,
+        default=UserRole.APPLICANT,
+    )
+    password_hash = Column(String(128), nullable=False)
+    status = Column(
+        Enum(UserStatus, values_callable=lambda enum: [member.value for member in enum]),
+        nullable=False,
+        default=UserStatus.ACTIVE,
+    )
+    token_version = Column(Integer, nullable=False, default=0)
+    failed_login_count = Column(Integer, nullable=False, default=0)
+    locked_until = Column(DateTime(timezone=True), nullable=True)
+    last_login_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime, default=_now_utc)
     updated_at = Column(DateTime, default=_now_utc, onupdate=_now_utc)
