@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link, useLocation, Outlet, Navigate } from 'react-router-dom';
 import {
   LayoutDashboard,
@@ -10,6 +10,7 @@ import {
   Scale,
   BookMarked,
   LogOut,
+  Menu,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { getUser, logout } from '@/lib/api';
@@ -44,6 +45,7 @@ function resolveTitle(pathname: string): string {
 const Layout: React.FC = () => {
   const location = useLocation();
   const user = getUser();
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   if (!user) {
     return <Navigate to="/login" replace />;
@@ -51,8 +53,20 @@ const Layout: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
-      {/* Sidebar */}
-      <aside className="w-64 bg-slate-900 text-white flex flex-col">
+      {/* 移动端遮罩 */}
+      {mobileNavOpen && (
+        <div
+          className="fixed inset-0 z-30 bg-black/40 md:hidden"
+          onClick={() => setMobileNavOpen(false)}
+        />
+      )}
+
+      {/* Sidebar：移动端抽屉式，桌面端固定 */}
+      <aside
+        className={`w-64 bg-slate-900 text-white flex flex-col fixed inset-y-0 left-0 z-40 transform transition-transform duration-200 md:static md:translate-x-0 ${
+          mobileNavOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
+      >
         <div className="p-6">
           <div className="flex items-center gap-3 mb-8">
             <div className="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center">
@@ -73,6 +87,7 @@ const Layout: React.FC = () => {
                 <Link
                   key={item.path}
                   to={item.path}
+                  onClick={() => setMobileNavOpen(false)}
                   className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
                     isActive
                       ? 'bg-blue-600 text-white'
@@ -107,16 +122,27 @@ const Layout: React.FC = () => {
       </aside>
 
       {/* Main content */}
-      <div className="flex-1">
-        <header className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
-          <h2 className="text-xl font-semibold text-gray-800">{resolveTitle(location.pathname)}</h2>
-          <div className="flex items-center gap-3">
-            <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm">
-              系统正常
-            </span>
+      <div className="flex-1 min-w-0">
+        <header className="bg-white border-b border-gray-200 px-4 py-4 md:px-6 flex items-center justify-between">
+          <div className="flex items-center gap-2 min-w-0">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="md:hidden shrink-0"
+              aria-label="打开导航菜单"
+              onClick={() => setMobileNavOpen(true)}
+            >
+              <Menu className="w-5 h-5" />
+            </Button>
+            <h2 className="text-lg md:text-xl font-semibold text-gray-800 truncate">
+              {resolveTitle(location.pathname)}
+            </h2>
           </div>
+          <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm shrink-0">
+            系统正常
+          </span>
         </header>
-        <main className="p-6">
+        <main className="p-4 md:p-6">
           <Outlet />
         </main>
       </div>

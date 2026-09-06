@@ -32,7 +32,8 @@
 │   │                          #   QualityChecks, QualityReport, SuspectedErrors,
 │   │                          #   Copilot, GovernanceDashboard, AgentActivity,
 │   │                          #   DisputeView, Metadata）
-│   ├── components/            # Layout.tsx + standards/（DataStandardFormDialog）+ ui/
+│   ├── components/            # Layout.tsx（响应式：移动端抽屉式侧边栏 + hamburger，桌面端固定侧栏）
+│   │                          #   + standards/（DataStandardFormDialog）+ ui/
 │   │   └── ui/                # shadcn/ui 组件
 │   ├── hooks/                 # 自定义 hooks（use-mobile）
 │   ├── lib/
