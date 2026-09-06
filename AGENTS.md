@@ -137,6 +137,9 @@
 - **后端配置**：`backend/app/core/config.py` — 环境变量驱动，`ENV` 默认 `development`
 - **数据库初始化**：`backend/init_db.py` — 建表 + 种子数据（注意：会先 drop_all 重建，勿对含数据的库执行）
 - **演示数据**：`backend/scripts/seed_demo_data.py` — 固定种子，默认幂等，`--reset` 只删演示对象
+- **性能基准**：`backend/scripts/benchmark.py` — 5,000 条存量下关键接口 P50/P95/P99（写入口 run/detect 各 1 次 + 12 个列表接口采样），`--json` 落盘可跨次对比；参考结论（2026-10）：质量检测 0.55s、疑似错误检测 0.56s、最差列表 P95 8.2ms（均远低于 30s / 500ms 阈值）
+- **注意**：`init_db.py` 先建 22 条基础记录，seed 默认 5,000 条会使整表达 5,022 超上限；整表跑检测须 `seed_demo_data.py --reset --records 4978`（总量 ≤ 5,000）
+- **standard_source 口径**：data_standard 表允许 `sap|industry|internal|demo`（demo 为 v2.0 演示标准来源，schemas.py 两处 pattern 已含 demo；metadata_field 表另有 `sap|ariba_slp|internal` 口径，勿混用）
 
 ## 构建与运行命令
 

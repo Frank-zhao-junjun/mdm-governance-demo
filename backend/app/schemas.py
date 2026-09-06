@@ -22,7 +22,7 @@ class DataStandardBase(BaseModel):
     unique: bool = False
     business_attrs: Optional[Dict[str, Any]] = None
     owner: Optional[str] = Field(None, max_length=50)
-    standard_source: Optional[str] = Field(None, pattern="^(sap|industry|internal)$")
+    standard_source: Optional[str] = Field(None, pattern="^(sap|industry|internal|demo)$")
     dept_scope: Optional[List[str]] = None
     description: Optional[str] = None
     sap_field_desc: Optional[str] = None
@@ -53,7 +53,7 @@ class DataStandardUpdate(BaseModel):
     unique: Optional[bool] = None
     business_attrs: Optional[Dict[str, Any]] = None
     owner: Optional[str] = Field(None, max_length=50)
-    standard_source: Optional[str] = Field(None, pattern="^(sap|industry|internal)$")
+    standard_source: Optional[str] = Field(None, pattern="^(sap|industry|internal|demo)$")
     dept_scope: Optional[List[str]] = None
     description: Optional[str] = None
     sap_field_desc: Optional[str] = None
